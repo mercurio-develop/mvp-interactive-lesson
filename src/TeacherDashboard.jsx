@@ -187,7 +187,10 @@ function TeacherDashboard({ onClose }) {
           <div className="dashboard-title-area">
             <span className="dashboard-emoji">🔬</span>
             <div>
-              <h2>Panel del Profesor — Calificaciones</h2>
+              <h2>
+                <span className="dash-title-full">Panel del Profesor — Calificaciones</span>
+                <span className="dash-title-short">Panel del Profesor</span>
+              </h2>
               <p className="dashboard-desc">
                 Monitorea el progreso de los alumnos y exporta sus resultados.
               </p>
@@ -195,10 +198,12 @@ function TeacherDashboard({ onClose }) {
           </div>
           <div className="dashboard-actions">
             <button onClick={loadResults} className="dash-btn secondary" disabled={loading}>
-              🔄 Actualizar
+              <span className="btn-label-full">🔄 Actualizar</span>
+              <span className="btn-label-short">🔄</span>
             </button>
             <button onClick={onClose} className="dash-btn close-btn">
-              ✕ Cerrar Panel
+              <span className="btn-label-full">✕ Cerrar Panel</span>
+              <span className="btn-label-short">✕ Cerrar</span>
             </button>
           </div>
         </header>
@@ -209,9 +214,14 @@ function TeacherDashboard({ onClose }) {
           <div className="banner-text">
             <strong>{syncStatus.msg}</strong>
             {!syncStatus.isCloud && (
-              <span className="banner-subtext">
-                {' '}— Los datos están guardados temporalmente en este navegador. Para usar en múltiples dispositivos, configura las variables de entorno de Supabase en tu archivo <code>.env</code> (<code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code>).
-              </span>
+              <>
+                <span className="banner-subtext banner-subtext-full">
+                  {' '}— Los datos están guardados temporalmente en este navegador. Para usar en múltiples dispositivos, configura las variables de entorno de Supabase en tu archivo <code>.env</code> (<code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code>).
+                </span>
+                <span className="banner-subtext banner-subtext-short">
+                  {' '}— Datos guardados en este dispositivo.
+                </span>
+              </>
             )}
           </div>
         </div>
@@ -266,21 +276,24 @@ function TeacherDashboard({ onClose }) {
               onClick={() => setShowShareModal(true)}
               className="dash-btn secondary"
             >
-              🔗 Compartir Juego
+              <span className="btn-label-full">🔗 Compartir Juego</span>
+              <span className="btn-label-short">🔗 Compartir</span>
             </button>
             <button
               onClick={handleExportCSV}
               className="dash-btn success"
               disabled={results.length === 0}
             >
-              📥 Exportar a Excel (CSV)
+              <span className="btn-label-full">📥 Exportar a Excel (CSV)</span>
+              <span className="btn-label-short">📥 Exportar CSV</span>
             </button>
             <button
               onClick={() => setConfirmClear(true)}
               className="dash-btn danger"
               disabled={results.length === 0}
             >
-              🗑️ Limpiar Datos
+              <span className="btn-label-full">🗑️ Limpiar Datos</span>
+              <span className="btn-label-short">🗑️ Limpiar</span>
             </button>
           </div>
         </section>
@@ -301,37 +314,63 @@ function TeacherDashboard({ onClose }) {
               )}
             </div>
           ) : (
-            <div className="dashboard-table-wrapper">
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Correctas</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredResults.map((r) => (
-                    <tr key={r.id} className="dashboard-table-row">
-                      <td className="student-name-cell">{r.studentName}</td>
-                      <td className="score-cell font-bold">
-                        {r.successes ?? 0} / {r.totalExperiments ?? 3}
-                      </td>
-                      <td>
-                        {(r.allPassed || (r.successes ?? 0) === (r.totalExperiments ?? 3))
-                          ? '✅ Aprobado'
-                          : '📋 Terminado'}
-                      </td>
-                      <td className="timestamp-cell">
-                        {new Date(r.timestamp).toLocaleDateString()}{' '}
-                        {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </td>
+            <>
+              <div className="dashboard-table-wrapper dashboard-desktop-only">
+                <table className="dashboard-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Correctas</th>
+                      <th>Estado</th>
+                      <th>Fecha</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredResults.map((r) => {
+                      const passed = r.allPassed || (r.successes ?? 0) === (r.totalExperiments ?? 3);
+                      return (
+                        <tr key={r.id} className="dashboard-table-row">
+                          <td className="student-name-cell">{r.studentName}</td>
+                          <td className="score-cell font-bold">
+                            {r.successes ?? 0} / {r.totalExperiments ?? 3}
+                          </td>
+                          <td>{passed ? '✅ Aprobado' : '📋 Terminado'}</td>
+                          <td className="timestamp-cell">
+                            {new Date(r.timestamp).toLocaleDateString()}{' '}
+                            {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="dashboard-mobile-list dashboard-mobile-only">
+                {filteredResults.map((r) => {
+                  const passed = r.allPassed || (r.successes ?? 0) === (r.totalExperiments ?? 3);
+                  return (
+                    <article key={r.id} className={`result-card ${passed ? 'passed' : 'finished'}`}>
+                      <div className="result-card-top">
+                        <span className="result-card-name">{r.studentName}</span>
+                        <span className="result-card-score">
+                          {r.successes ?? 0}/{r.totalExperiments ?? 3}
+                        </span>
+                      </div>
+                      <div className="result-card-bottom">
+                        <span className="result-card-status">
+                          {passed ? '✅ Aprobado' : '📋 Terminado'}
+                        </span>
+                        <time className="result-card-date">
+                          {new Date(r.timestamp).toLocaleDateString()}{' '}
+                          {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </time>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
           )}
         </main>
       </div>
@@ -368,29 +407,28 @@ function TeacherDashboard({ onClose }) {
       {/* Share Modal with Dynamic QR code */}
       {showShareModal && (
         <div className="confirm-modal-overlay" onClick={() => setShowShareModal(false)}>
-          <div className="confirm-modal-card" onClick={(e) => e.stopPropagation()} style={{ borderColor: 'var(--wood-dark)' }}>
-            <h3 style={{ color: 'var(--wood-dark)', marginBottom: '8px' }}>📱 Compartir con Alumnos</h3>
-            <p style={{ fontSize: '13px', color: '#854d0e', marginBottom: '16px' }}>
+          <div className="confirm-modal-card share-modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 className="share-modal-title">📱 Compartir con Alumnos</h3>
+            <p className="share-modal-desc">
               Escanea este código QR con la cámara de una tablet o teléfono para abrir el laboratorio:
             </p>
-            
-            <div style={{ background: '#fff', padding: '16px', borderRadius: '16px', display: 'inline-block', border: '3px solid #e6dfd3', marginBottom: '16px', boxShadow: '0 4px 10px rgba(120, 53, 15, 0.05)' }}>
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=78350f&bgcolor=fdfbf7&data=${encodeURIComponent(window.location.origin)}`} 
-                alt="Código QR del Juego" 
-                style={{ display: 'block', width: '200px', height: '200px' }}
+
+            <div className="share-qr-wrap">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=78350f&bgcolor=fdfbf7&data=${encodeURIComponent(window.location.origin)}`}
+                alt="Código QR del Juego"
+                className="share-qr-image"
               />
             </div>
-            
-            <div style={{ fontSize: '12px', wordBreak: 'break-all', background: 'var(--bg-input)', padding: '10px', borderRadius: '10px', color: 'var(--text-dark)', marginBottom: '20px', border: '1px solid #e6dfd3', fontFamily: 'monospace' }}>
+
+            <div className="share-url-box">
               {window.location.origin}
             </div>
 
-            <div className="confirm-modal-actions">
+            <div className="confirm-modal-actions share-modal-actions">
               <button
                 onClick={() => setShowShareModal(false)}
                 className="dash-btn secondary confirm-btn"
-                style={{ width: '100%', justifyContent: 'center' }}
               >
                 Cerrar
               </button>

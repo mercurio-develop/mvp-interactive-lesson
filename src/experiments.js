@@ -1,7 +1,7 @@
 export const EXPERIMENTS = [
-  { id: 'Violeta', label: 'Poción Violeta', emoji: '🪻', hex: 0xa855f7, cssClass: 'violeta', recipe: ['Rojo', 'Azul'] },
-  { id: 'Verde', label: 'Poción Verde', emoji: '🍃', hex: 0x10b981, cssClass: 'verde', recipe: ['Azul', 'Amarillo'] },
-  { id: 'Anaranjado', label: 'Poción Naranja', emoji: '🍊', hex: 0xf97316, cssClass: 'naranja', recipe: ['Rojo', 'Amarillo'] },
+  { id: 'Violeta', label: 'Poción Violeta', shortLabel: 'Violeta', emoji: '🪻', hex: 0xa855f7, cssClass: 'violeta', recipe: ['Rojo', 'Azul'] },
+  { id: 'Verde', label: 'Poción Verde', shortLabel: 'Verde', emoji: '🍃', hex: 0x10b981, cssClass: 'verde', recipe: ['Azul', 'Amarillo'] },
+  { id: 'Anaranjado', label: 'Poción Naranja', shortLabel: 'Naranja', emoji: '🍊', hex: 0xf97316, cssClass: 'naranja', recipe: ['Rojo', 'Amarillo'] },
 ];
 
 export const EXPERIMENT_STATUS = {

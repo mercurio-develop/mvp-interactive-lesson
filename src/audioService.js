@@ -1,6 +1,13 @@
-import { Howl } from 'howler';
+// Web Audio API Synthesizer
+const SFX_VOLUME = {
+  success: 0.22,
+  failure: 0.35,
+  failureNoise: 0.22,
+  pour: 0.15,
+  matchFill: 0.12,
+  music: 0.065,
+};
 
-// Web Audio API Synthesizer Fallback
 class WebAudioSynth {
   constructor() {
     this.ctx = null;
@@ -37,7 +44,7 @@ class WebAudioSynth {
       osc.frequency.setValueAtTime(freq, now + i * 0.08);
       
       gain.gain.setValueAtTime(0, now + i * 0.08);
-      gain.gain.linearRampToValueAtTime(0.15, now + i * 0.08 + 0.02);
+      gain.gain.linearRampToValueAtTime(SFX_VOLUME.success, now + i * 0.08 + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 0.4);
       
       osc.connect(gain);
@@ -67,7 +74,7 @@ class WebAudioSynth {
     filter.frequency.setValueAtTime(600, now);
     filter.frequency.exponentialRampToValueAtTime(40, now + duration);
     
-    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.setValueAtTime(SFX_VOLUME.failure, now);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     
     osc.connect(filter);
@@ -94,7 +101,7 @@ class WebAudioSynth {
       noiseFilter.frequency.setValueAtTime(300, now);
       
       const noiseGain = this.ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.15, now);
+      noiseGain.gain.setValueAtTime(SFX_VOLUME.failureNoise, now);
       noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       
       noise.connect(noiseFilter);
@@ -125,7 +132,7 @@ class WebAudioSynth {
     osc.frequency.exponentialRampToValueAtTime(1000, now + duration);
     
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+    gain.gain.linearRampToValueAtTime(SFX_VOLUME.pour, now + 0.05);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     
     osc.connect(gain);
@@ -149,7 +156,7 @@ class WebAudioSynth {
     osc.frequency.setValueAtTime(400, now);
     osc.frequency.exponentialRampToValueAtTime(1500, now + duration);
     
-    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.setValueAtTime(SFX_VOLUME.matchFill, now);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     
     osc.connect(gain);
@@ -190,7 +197,7 @@ class WebAudioSynth {
     osc.frequency.setValueAtTime(freq, now);
     
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.04, now + 0.08); // Relaxing, low background volume
+    gain.gain.linearRampToValueAtTime(SFX_VOLUME.music, now + 0.08); // Relaxing, low background volume
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5); // Warm, gentle decay
     
     osc.connect(gain);
@@ -231,31 +238,6 @@ class WebAudioSynth {
 
 const synth = new WebAudioSynth();
 
-// Howler.js Sound Objects
-const howlerSuccess = new Howl({
-  src: ['https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav'],
-  volume: 0.35,
-  html5: false,
-  onloaderror: () => console.log('Howler success sound failed loading. Using WebAudio Synth fallback.'),
-  onplayerror: () => console.log('Howler success sound failed playing. Using WebAudio Synth fallback.')
-});
-
-const howlerFailure = new Howl({
-  src: ['https://assets.mixkit.co/active_storage/sfx/250/250-84.wav'],
-  volume: 0.3,
-  html5: false,
-  onloaderror: () => console.log('Howler failure sound failed loading. Using WebAudio Synth fallback.'),
-  onplayerror: () => console.log('Howler failure sound failed playing. Using WebAudio Synth fallback.')
-});
-
-const howlerPour = new Howl({
-  src: ['https://assets.mixkit.co/active_storage/sfx/1079/1079-84.wav'], // bubble/pour SFX
-  volume: 0.4,
-  html5: false,
-  onloaderror: () => {},
-  onplayerror: () => {}
-});
-
 let isSoundMuted = false;
 let isMusicPlaying = false;
 
@@ -266,41 +248,17 @@ export const audioService = {
 
   playSuccess: () => {
     if (isSoundMuted) return;
-    if (howlerSuccess.state() === 'loaded') {
-      try {
-        howlerSuccess.play();
-      } catch (e) {
-        synth.playSuccess();
-      }
-    } else {
-      synth.playSuccess();
-    }
+    synth.playSuccess();
   },
 
   playFailure: () => {
     if (isSoundMuted) return;
-    if (howlerFailure.state() === 'loaded') {
-      try {
-        howlerFailure.play();
-      } catch (e) {
-        synth.playFailure();
-      }
-    } else {
-      synth.playFailure();
-    }
+    synth.playFailure();
   },
 
   playPour: () => {
     if (isSoundMuted) return;
-    if (howlerPour.state() === 'loaded') {
-      try {
-        howlerPour.play();
-      } catch (e) {
-        synth.playPour();
-      }
-    } else {
-      synth.playPour();
-    }
+    synth.playPour();
   },
 
   playMatchFill: () => {

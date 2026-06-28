@@ -3,6 +3,84 @@ import Phaser from 'phaser';
 import { audioService } from './audioService';
 import { EXPERIMENTS, INITIAL_EXPERIMENT_STATUS, EXPERIMENT_STATUS, isExperimentLocked, getNextPendingExperiment, allExperimentsAttempted, allExperimentsPassed, countPassed, countPending } from './experiments';
 
+const REDIRECT_COUNTDOWN_SECONDS = 10;
+const ASSET_BOOST = 1.14;
+
+function scaleAsset(value) {
+  return value * ASSET_BOOST;
+}
+
+const MIXING_FLASK = { w: scaleAsset(80), h: scaleAsset(100) };
+const TARGET_FLASK = { w: scaleAsset(70), h: scaleAsset(90) };
+const SPEECH_BUBBLE_Y = -108;
+const SPEECH_BUBBLE_FLOAT_Y = SPEECH_BUBBLE_Y - 15;
+const MIXING_FLASK_SHIFT_X = 42;
+const MOBILE_SHIFT_X = 65;
+
+function getSceneLayout(viewportWidth) {
+  if (viewportWidth < 600) {
+    const x = MOBILE_SHIFT_X;
+    return {
+      profile: 'mobile',
+      scientist: { x: 90 + x, y: 384 },
+      mixingFlask: { x: 318 + x, y: 410 },
+      dumpButton: { x: 318 + x, y: 522 },
+      dumpFollowY: 112,
+      mixingFlaskYOffset: 26,
+      mixingLabelY: -76,
+      targetColumnX: 548 + x,
+      activeTargetY: 272,
+      tubes: { startX: 48 + x, shelfY: 78, spacing: 96, shelfWidth: 296 },
+      tubeScale: scaleAsset(0.94),
+      scientistScale: scaleAsset(0.9),
+      targetScale: scaleAsset(0.91),
+      mixingFlaskScale: scaleAsset(1.05),
+      dumpButtonScale: scaleAsset(0.98),
+      fontSizes: { tube: 17, target: 18, mixing: 20, hint: 18, speech: 17, feedback: 22, dump: 14, star: 24 },
+    };
+  }
+
+  if (viewportWidth < 1024) {
+    return {
+      profile: 'tablet',
+      scientist: { x: 162, y: 388 },
+      mixingFlask: { x: 304 + MIXING_FLASK_SHIFT_X, y: 413 },
+      dumpButton: { x: 304 + MIXING_FLASK_SHIFT_X, y: 526 },
+      dumpFollowY: 113,
+      mixingFlaskYOffset: 25,
+      mixingLabelY: -74,
+      targetColumnX: 672,
+      activeTargetY: 278,
+      tubes: { startX: 136, shelfY: 82, spacing: 108, shelfWidth: 330 },
+      tubeScale: scaleAsset(0.97),
+      scientistScale: scaleAsset(0.94),
+      targetScale: scaleAsset(0.96),
+      mixingFlaskScale: scaleAsset(1.02),
+      dumpButtonScale: scaleAsset(1),
+      fontSizes: { tube: 18, target: 18, mixing: 21, hint: 18, speech: 17, feedback: 22, dump: 15, star: 24 },
+    };
+  }
+
+  return {
+    profile: 'desktop',
+    scientist: { x: 210, y: 386 },
+    mixingFlask: { x: 346 + MIXING_FLASK_SHIFT_X, y: 411 },
+    dumpButton: { x: 346 + MIXING_FLASK_SHIFT_X, y: 521 },
+    dumpFollowY: 110,
+    mixingFlaskYOffset: 25,
+    mixingLabelY: -72,
+    targetColumnX: 758,
+    activeTargetY: 276,
+    tubes: { startX: 188, shelfY: 80, spacing: 124, shelfWidth: 352 },
+    tubeScale: scaleAsset(1),
+    scientistScale: scaleAsset(1),
+    targetScale: scaleAsset(1),
+    mixingFlaskScale: scaleAsset(1),
+    dumpButtonScale: scaleAsset(1),
+    fontSizes: { tube: 19, target: 19, mixing: 22, hint: 20, speech: 18, feedback: 24, dump: 16, star: 26 },
+  };
+}
+
 export default function ColorGame({ onGameComplete }) {
   const [studentName, setStudentName] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -16,13 +94,19 @@ export default function ColorGame({ onGameComplete }) {
   const [activeGoal, setActiveGoal] = useState(EXPERIMENTS[0].id);
   const [isPouring, setIsPouring] = useState(false);
   const [gameSessionId, setGameSessionId] = useState(0);
-  const [redirectCountdown, setRedirectCountdown] = useState(10);
+  const [redirectCountdown, setRedirectCountdown] = useState(REDIRECT_COUNTDOWN_SECONDS);
 
   const gameRef = useRef(null);
   const phaserGame = useRef(null);
   const activeGameSessionRef = useRef(0);
+  const redirectTimerRef = useRef(null);
 
   const passedCount = countPassed(experimentStatus);
+
+  useEffect(() => {
+    document.body.classList.toggle('game-active', isAuthorized && !completed);
+    return () => document.body.classList.remove('game-active');
+  }, [isAuthorized, completed]);
 
   // Sound Controls
   const toggleSound = () => {
@@ -209,11 +293,11 @@ export default function ColorGame({ onGameComplete }) {
       scene.scientistContainer.add(scene.scientistGraphics);
       
       // Floating React Speech Bubble Container
-      scene.speechContainer = scene.add.container(0, -90);
+      scene.speechContainer = scene.add.container(0, SPEECH_BUBBLE_Y);
       scene.speechBubble = scene.add.graphics();
       scene.speechText = scene.add.text(0, -2, '', {
         fontFamily: "'Fredoka', sans-serif",
-        fontSize: '15px',
+        fontSize: '18px',
         fontStyle: 'bold',
         color: '#1e293b',
         align: 'center'
@@ -461,15 +545,7 @@ export default function ColorGame({ onGameComplete }) {
       // Draw initial Scientist state
       scene.drawScientist(scene.scientistGraphics, 'idle');
 
-      // Scientist Breathing Tween
-      scene.tweens.add({
-        targets: scene.scientistContainer,
-        y: 396,
-        duration: 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
+      scene.scientistBreathTween = null;
 
       scene.setScientistState = function(state) {
         scene.drawScientist(scene.scientistGraphics, state);
@@ -509,13 +585,13 @@ export default function ColorGame({ onGameComplete }) {
           scene.speechBubble.strokePath();
  
           scene.speechContainer.alpha = 1;
-          scene.speechContainer.y = -90;
+          scene.speechContainer.y = SPEECH_BUBBLE_Y;
 
           if (scene.speechTween) scene.speechTween.remove();
           scene.speechTween = scene.tweens.add({
             targets: scene.speechContainer,
             alpha: 0,
-            y: -105,
+            y: SPEECH_BUBBLE_FLOAT_Y,
             delay: 2000,
             duration: 350,
             onComplete: () => {
@@ -551,7 +627,7 @@ export default function ColorGame({ onGameComplete }) {
         scene.speechBubble.strokePath();
 
         scene.speechContainer.alpha = 1;
-        scene.speechContainer.y = -90;
+        scene.speechContainer.y = SPEECH_BUBBLE_Y;
 
         if (scene.speechTween) scene.speechTween.remove();
       };
@@ -563,25 +639,25 @@ export default function ColorGame({ onGameComplete }) {
       scene.mixingFlaskContainer.add(scene.mixingFlaskGraphics);
  
       // Label above mixing flask
-      scene.mixingLabelText = scene.add.text(0, -68, 'MATRAZ VACÍO 🧪', {
+      scene.mixingLabelText = scene.add.text(0, -72, 'MATRAZ VACÍO 🧪', {
         fontFamily: "'Fredoka', sans-serif",
-        fontSize: '18px',
+        fontSize: '22px',
         fontStyle: 'bold',
         color: '#78350f',
         stroke: '#ffffff',
-        strokeThickness: 3,
+        strokeThickness: 4,
         align: 'center'
       }).setOrigin(0.5);
       scene.mixingFlaskContainer.add(scene.mixingLabelText);
  
       // Mixing hint (matraz-only flow)
-      scene.dragHintText = scene.add.text(0, 68, '¡Mezcla 2 colores! 🧪', {
+      scene.dragHintText = scene.add.text(0, 72, '¡Mezcla 2 colores! 🧪', {
         fontFamily: "'Fredoka', sans-serif",
-        fontSize: '16px',
+        fontSize: '20px',
         fontStyle: 'bold',
         color: '#d97706',
         stroke: '#ffffff',
-        strokeThickness: 3,
+        strokeThickness: 4,
         align: 'center'
       }).setOrigin(0.5);
       scene.dragHintText.alpha = 0;
@@ -598,28 +674,27 @@ export default function ColorGame({ onGameComplete }) {
         // 1. Draw glowing background silhouette if there's chemical reaction
         if (level > 0) {
           graphics.lineStyle(7, colorHex, 0.25);
-          drawFlaskSilhouette(graphics, 0, 0, 80, 100);
+          drawFlaskSilhouette(graphics, 0, 0, MIXING_FLASK.w, MIXING_FLASK.h);
         }
 
         // 2. Draw liquid inside matching the flask's inner geometry
         if (level > 0) {
           graphics.fillStyle(colorHex, 0.85);
-          drawLiquidFill(graphics, 0, 0, 80, 100, level);
+          drawLiquidFill(graphics, 0, 0, MIXING_FLASK.w, MIXING_FLASK.h, level);
         }
 
         // 3. Draw outer glass container contour
         graphics.lineStyle(3.5, 0xffffff, 0.95);
-        drawFlaskSilhouette(graphics, 0, 0, 80, 100);
+        drawFlaskSilhouette(graphics, 0, 0, MIXING_FLASK.w, MIXING_FLASK.h);
 
         // 4. Graduation ticks (laboratory markings)
         graphics.lineStyle(1.5, 0xffffff, 0.4);
-        const startY = 40; // bottom
-        const endY = -20;  // neck base
+        const startY = 40 * ASSET_BOOST;
+        const endY = -20 * ASSET_BOOST;
         for (let i = 1; i <= 3; i++) {
           const ratio = 0.25 * i;
           const markY = startY - (startY - endY) * ratio;
-          // Interpolate width at height
-          const widthAtY = 80 - (80 - 24) * ratio;
+          const widthAtY = MIXING_FLASK.w - (MIXING_FLASK.w - 24 * ASSET_BOOST) * ratio;
           const halfW = widthAtY / 2;
           graphics.lineBetween(-halfW + 4, markY, -halfW + 12, markY);
         }
@@ -627,7 +702,7 @@ export default function ColorGame({ onGameComplete }) {
         // 5. White light glossy sheen highlight
         graphics.lineStyle(2, 0xffffff, 0.45);
         graphics.beginPath();
-        graphics.arc(20, 20, 14, -Math.PI / 4, Math.PI / 4, false);
+        graphics.arc(20 * ASSET_BOOST, 20 * ASSET_BOOST, 14 * ASSET_BOOST, -Math.PI / 4, Math.PI / 4, false);
         graphics.strokePath();
 
         // Update interaction state
@@ -646,11 +721,15 @@ export default function ColorGame({ onGameComplete }) {
         const tubeSpacing = 120;
  
         // Draw a simple horizontal Ghibli wooden shelf bar
-        const shelfBar = scene.add.graphics();
-        shelfBar.fillStyle(0x78350f, 0.95); // wood brown
-        shelfBar.lineStyle(2, 0x451a03, 0.8);
-        shelfBar.fillRoundedRect(startX - 50, shelfY + 45, 340, 10, 4);
-        shelfBar.strokeRoundedRect(startX - 50, shelfY + 45, 340, 10, 4);
+        scene.shelfBar = scene.add.graphics();
+        scene.drawTubeShelf = function (layout) {
+          const { startX, shelfY, shelfWidth } = layout.tubes;
+          scene.shelfBar.clear();
+          scene.shelfBar.fillStyle(0x78350f, 0.95);
+          scene.shelfBar.lineStyle(2, 0x451a03, 0.8);
+          scene.shelfBar.fillRoundedRect(startX - 50, shelfY + 45, shelfWidth, 10, 4);
+          scene.shelfBar.strokeRoundedRect(startX - 50, shelfY + 45, shelfWidth, 10, 4);
+        };
  
         const colorsData = [
           { colorKey: 'Rojo', hex: scene.colors.Rojo.hex, label: '🍓 ROJO' },
@@ -714,18 +793,18 @@ export default function ColorGame({ onGameComplete }) {
           scene.drawTestTubeGraphic(tubeGraphics, tubeInfo.hex);
    
           // Add Label Text below the tube
-          const label = scene.add.text(0, 68, tubeInfo.label, {
+          const label = scene.add.text(0, 72, tubeInfo.label, {
             fontFamily: "'Fredoka', sans-serif",
-            fontSize: '16px',
+            fontSize: '19px',
             fontStyle: 'bold',
             color: '#78350f',
             stroke: '#ffffff',
-            strokeThickness: 3
+            strokeThickness: 4
           }).setOrigin(0.5);
           tubeContainer.add(label);
    
           // Setup interaction
-          tubeContainer.setSize(34, 115);
+          tubeContainer.setSize(scaleAsset(34), scaleAsset(115));
           tubeContainer.setInteractive({ draggable: true });
           
           // Store configurations
@@ -759,19 +838,19 @@ export default function ColorGame({ onGameComplete }) {
         targetContainer.add(solvedGraphics);
 
         // Labels (Clean Fredoka text displaying the target flask name without recipes)
-        const titleText = scene.add.text(0, -62, tgtInfo.label, {
+        const titleText = scene.add.text(0, -66, tgtInfo.label, {
           fontFamily: "'Fredoka', sans-serif",
-          fontSize: '16px',
+          fontSize: '19px',
           fontStyle: 'bold',
           color: '#78350f',
           stroke: '#ffffff',
-          strokeThickness: 3
+          strokeThickness: 4
         }).setOrigin(0.5);
         targetContainer.add(titleText);
 
         // Star badge (hidden initially, pops up on solved)
         const starText = scene.add.text(42, -30, '⭐', {
-          fontSize: '20px'
+          fontSize: '26px'
         }).setOrigin(0.5);
         starText.alpha = 0;
         targetContainer.add(starText);
@@ -781,11 +860,11 @@ export default function ColorGame({ onGameComplete }) {
           graphics.clear();
           // Draw faint silhouette of target color
           graphics.fillStyle(colorHex, 0.2);
-          drawLiquidFill(graphics, 0, 0, 70, 90, 0.8);
+          drawLiquidFill(graphics, 0, 0, TARGET_FLASK.w, TARGET_FLASK.h, 0.8);
 
           // Draw dashed / faint outline
           graphics.lineStyle(3.5, colorHex, 0.9);
-          drawFlaskSilhouette(graphics, 0, 0, 70, 90);
+          drawFlaskSilhouette(graphics, 0, 0, TARGET_FLASK.w, TARGET_FLASK.h);
         };
 
         scene.drawTargetSolved = function (graphics, colorHex, isSolved) {
@@ -793,16 +872,16 @@ export default function ColorGame({ onGameComplete }) {
           if (isSolved) {
             // Draw liquid filled
             graphics.fillStyle(colorHex, 0.85);
-            drawLiquidFill(graphics, 0, 0, 70, 90, 0.85);
+            drawLiquidFill(graphics, 0, 0, TARGET_FLASK.w, TARGET_FLASK.h, 0.85);
 
             // Draw clean white glass outline
             graphics.lineStyle(3.5, 0xffffff, 0.95);
-            drawFlaskSilhouette(graphics, 0, 0, 70, 90);
+            drawFlaskSilhouette(graphics, 0, 0, TARGET_FLASK.w, TARGET_FLASK.h);
 
             // Draw light gloss highlight
             graphics.lineStyle(2, 0xffffff, 0.45);
             graphics.beginPath();
-            graphics.arc(16, 16, 12, -Math.PI / 4, Math.PI / 4, false);
+            graphics.arc(16 * ASSET_BOOST, 16 * ASSET_BOOST, 12 * ASSET_BOOST, -Math.PI / 4, Math.PI / 4, false);
             graphics.strokePath();
           }
         };
@@ -881,11 +960,11 @@ export default function ColorGame({ onGameComplete }) {
 
         const okText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '¡CORRECTO! ✅', {
           fontFamily: "'Fredoka', sans-serif",
-          fontSize: '18px',
+          fontSize: `${getSceneLayout(window.innerWidth).fontSizes.feedback}px`,
           fontStyle: 'bold',
           color: '#16a34a',
           stroke: '#ffffff',
-          strokeThickness: 3
+          strokeThickness: 4
         }).setOrigin(0.5);
 
         scene.tweens.add({
@@ -925,7 +1004,7 @@ export default function ColorGame({ onGameComplete }) {
         scene.game.events.emit('trigger-failure-sfx');
         scene.cameras.main.shake(250, 0.008);
 
-        const flaskHomeX = 350;
+        const flaskHomeX = scene.mixingFlaskHomeX ?? 350;
         scene.tweens.add({
           targets: scene.mixingFlaskContainer,
           x: flaskHomeX - 8,
@@ -939,11 +1018,11 @@ export default function ColorGame({ onGameComplete }) {
 
         const failText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, 'FALLIDO ❌', {
           fontFamily: "'Fredoka', sans-serif",
-          fontSize: '18px',
+          fontSize: `${getSceneLayout(window.innerWidth).fontSizes.feedback}px`,
           fontStyle: 'bold',
           color: '#f43f5e',
           stroke: '#ffffff',
-          strokeThickness: 3
+          strokeThickness: 4
         }).setOrigin(0.5);
 
         scene.tweens.add({
@@ -992,42 +1071,39 @@ export default function ColorGame({ onGameComplete }) {
 
       // 7. Manual Empty Button (Trash Bin / Drain)
       // Placed below the mixing flask
+      const dumpBtnW = scaleAsset(80);
+      const dumpBtnH = scaleAsset(16);
+      const drawDumpButtonBg = (graphics, hover = false) => {
+        graphics.clear();
+        graphics.fillStyle(0x22c55e, hover ? 0.3 : 0.15);
+        graphics.lineStyle(2, 0x15803d, hover ? 0.9 : 0.6);
+        graphics.fillRoundedRect(-dumpBtnW, -dumpBtnH, dumpBtnW * 2, dumpBtnH * 2, 8);
+        graphics.strokeRoundedRect(-dumpBtnW, -dumpBtnH, dumpBtnW * 2, dumpBtnH * 2, 8);
+      };
+
       const dumpButtonContainer = scene.add.container(350, 525);
+      scene.dumpButtonContainer = dumpButtonContainer;
       const dbGraphics = scene.add.graphics();
-      dbGraphics.fillStyle(0x22c55e, 0.15); // soft leaf green
-      dbGraphics.lineStyle(2, 0x15803d, 0.6);
-      dbGraphics.fillRoundedRect(-80, -16, 160, 32, 8);
-      dbGraphics.strokeRoundedRect(-80, -16, 160, 32, 8);
+      drawDumpButtonBg(dbGraphics);
       dumpButtonContainer.add(dbGraphics);
 
       const dbText = scene.add.text(0, 0, '🧪 LIMPIAR MATRAZ', {
         fontFamily: "'Fredoka', sans-serif",
-        fontSize: '13px',
+        fontSize: '16px',
         fontStyle: 'bold',
         color: '#15803d',
         stroke: '#ffffff',
-        strokeThickness: 3
+        strokeThickness: 4
       }).setOrigin(0.5);
       dumpButtonContainer.add(dbText);
+      scene.dumpButtonText = dbText;
 
-      dumpButtonContainer.setSize(160, 32);
+      dumpButtonContainer.setSize(scaleAsset(160), scaleAsset(32));
       dumpButtonContainer.setInteractive({ useHandCursor: true });
       
-      dumpButtonContainer.on('pointerover', () => {
-        dbGraphics.clear();
-        dbGraphics.fillStyle(0x22c55e, 0.3);
-        dbGraphics.lineStyle(2, 0x15803d, 0.9);
-        dbGraphics.fillRoundedRect(-80, -16, 160, 32, 8);
-        dbGraphics.strokeRoundedRect(-80, -16, 160, 32, 8);
-      });
+      dumpButtonContainer.on('pointerover', () => drawDumpButtonBg(dbGraphics, true));
 
-      dumpButtonContainer.on('pointerout', () => {
-        dbGraphics.clear();
-        dbGraphics.fillStyle(0x22c55e, 0.15);
-        dbGraphics.lineStyle(2, 0x15803d, 0.6);
-        dbGraphics.fillRoundedRect(-80, -16, 160, 32, 8);
-        dbGraphics.strokeRoundedRect(-80, -16, 160, 32, 8);
-      });
+      dumpButtonContainer.on('pointerout', () => drawDumpButtonBg(dbGraphics, false));
 
       dumpButtonContainer.on('pointerdown', () => {
         if (scene.currentLiquidLevel > 0) {
@@ -1038,9 +1114,10 @@ export default function ColorGame({ onGameComplete }) {
       // Drag Tube Logic
       scene.input.on('dragstart', function (pointer, gameObject) {
         scene.children.bringToTop(gameObject);
+        const baseScale = gameObject.getData('tubeBaseScale') || 1;
         scene.tweens.add({
           targets: gameObject,
-          scale: 1.12,
+          scale: baseScale * 1.12,
           angle: 10,
           duration: 120,
           ease: 'Power1'
@@ -1056,14 +1133,16 @@ export default function ColorGame({ onGameComplete }) {
         const startX = gameObject.getData('startX');
         const startY = gameObject.getData('startY');
 
+        const baseScale = gameObject.getData('tubeBaseScale') || 1;
         scene.tweens.add({
           targets: gameObject,
-          scale: 1.0,
+          scale: baseScale,
           angle: 0,
           duration: 150,
           ease: 'Power1'
         });
 
+        const pourRadius = scene.layoutProfile === 'mobile' ? scaleAsset(115) : scaleAsset(100);
         const dist = Phaser.Math.Distance.Between(
           gameObject.x,
           gameObject.y,
@@ -1071,7 +1150,7 @@ export default function ColorGame({ onGameComplete }) {
           scene.mixingFlaskContainer.y - 45
         );
 
-        if (dist < 100) {
+        if (dist < pourRadius) {
           scene.pourTube(gameObject, startX, startY);
         } else {
           scene.tweens.add({
@@ -1322,32 +1401,106 @@ export default function ColorGame({ onGameComplete }) {
       };
 
       // Send initial state synchronization
+      scene.applyResponsiveLayout = function () {
+        const layout = getSceneLayout(window.innerWidth);
+        if (scene.appliedLayoutProfile === layout.profile) {
+          return;
+        }
+        scene.appliedLayoutProfile = layout.profile;
+        scene.layoutProfile = layout.profile;
+        scene.mixingFlaskHomeX = layout.mixingFlask.x;
+        scene.targetColumnX = layout.targetColumnX;
+        scene.activeTargetY = layout.activeTargetY;
+        scene.mixingFlaskYOffset = layout.mixingFlaskYOffset ?? 25;
+        scene.dumpButtonFollowY = layout.dumpFollowY ?? 112;
+
+        scene.scientistContainer.setPosition(layout.scientist.x, layout.scientist.y);
+        scene.scientistContainer.setScale(layout.scientistScale);
+        scene.speechContainer.setPosition(0, SPEECH_BUBBLE_Y);
+        scene.mixingFlaskContainer.setPosition(
+          layout.mixingFlask.x,
+          layout.scientist.y + scene.mixingFlaskYOffset
+        );
+        scene.mixingFlaskContainer.setScale(layout.mixingFlaskScale);
+        scene.dumpButtonContainer.setPosition(
+          layout.dumpButton.x,
+          scene.mixingFlaskContainer.y + scene.dumpButtonFollowY
+        );
+        scene.dumpButtonContainer.setScale(layout.dumpButtonScale);
+
+        scene.mixingLabelText.setFontSize(layout.fontSizes.mixing);
+        scene.mixingLabelText.setY(layout.mixingLabelY ?? -72);
+        scene.dragHintText.setFontSize(layout.fontSizes.hint);
+        scene.speechText.setFontSize(layout.fontSizes.speech);
+        if (scene.dumpButtonText) {
+          scene.dumpButtonText.setFontSize(layout.fontSizes.dump);
+        }
+
+        scene.drawTubeShelf(layout);
+
+        scene.tubes.forEach((tubeContainer, index) => {
+          const tx = layout.tubes.startX + index * layout.tubes.spacing;
+          const ty = layout.tubes.shelfY;
+          tubeContainer.setPosition(tx, ty);
+          tubeContainer.setScale(layout.tubeScale);
+          tubeContainer.setData('tubeBaseScale', layout.tubeScale);
+          tubeContainer.setData('startX', tx);
+          tubeContainer.setData('startY', ty);
+          const hitScale = layout.profile === 'mobile' ? 1.35 : 1.1;
+          tubeContainer.setSize(scaleAsset(34) * hitScale, scaleAsset(115) * hitScale);
+          const label = tubeContainer.list.find((child) => child.type === 'Text');
+          if (label) {
+            label.setFontSize(layout.fontSizes.tube);
+          }
+        });
+
+        Object.values(scene.targets).forEach((tgt) => {
+          tgt.container.setScale(layout.targetScale);
+          const titleText = tgt.container.list.find((child) => child.type === 'Text' && child !== tgt.starText);
+          if (titleText) {
+            titleText.setFontSize(layout.fontSizes.target);
+          }
+          if (tgt.starText) {
+            tgt.starText.setFontSize(layout.fontSizes.star);
+          }
+        });
+
+        if (scene.scientistBreathTween) {
+          scene.scientistBreathTween.remove();
+        }
+        scene.scientistBreathTween = scene.tweens.add({
+          targets: scene.scientistContainer,
+          y: layout.scientist.y + 6,
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+
+        scene.updateActiveTargetDisplay();
+      };
+
+      scene.applyResponsiveLayout();
+
       scene.syncStats();
     }
 
     function update() {
       if (this.scientistContainer && this.mixingFlaskContainer) {
-        this.mixingFlaskContainer.y = this.scientistContainer.y + 25;
+        const yOffset = this.mixingFlaskYOffset ?? 25;
+        this.mixingFlaskContainer.y = this.scientistContainer.y + yOffset;
+        if (this.dumpButtonContainer) {
+          this.dumpButtonContainer.x = this.mixingFlaskContainer.x;
+          this.dumpButtonContainer.y = this.mixingFlaskContainer.y + (this.dumpButtonFollowY ?? 112);
+        }
       }
     }
 
     // Safe Particle Manager Factory (Version Compatible Helper)
     function createSafeParticles(scene, x, y, texture, config) {
-      try {
-        const emitter = scene.add.particles(texture, config);
-        if (x !== undefined && y !== undefined) {
-          emitter.setPosition(x, y);
-        }
-        return emitter;
-      } catch (err) {
-        // Fallback for older Phaser 3.50 API
-        const manager = scene.add.particles(texture);
-        const emitter = manager.createEmitter(config);
-        if (x !== undefined && y !== undefined) {
-          emitter.setPosition(x, y);
-        }
-        return emitter;
-      }
+      const px = x ?? 0;
+      const py = y ?? 0;
+      return scene.add.particles(px, py, texture, config);
     }
 
     // Geometry Helpers
@@ -1421,6 +1574,10 @@ export default function ColorGame({ onGameComplete }) {
       if (phaserGame.current?.scale) {
         phaserGame.current.scale.refresh();
       }
+      const activeScene = phaserGame.current?.scene?.scenes?.[0];
+      if (activeScene?.applyResponsiveLayout) {
+        activeScene.applyResponsiveLayout();
+      }
     };
     window.addEventListener('resize', onResize);
 
@@ -1461,6 +1618,10 @@ export default function ColorGame({ onGameComplete }) {
   };
 
   const finishAndReturnToStart = () => {
+    if (redirectTimerRef.current) {
+      clearInterval(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
     activeGameSessionRef.current += 1;
     setCompleted(false);
     setAllPassed(false);
@@ -1468,7 +1629,7 @@ export default function ColorGame({ onGameComplete }) {
     setActiveGoal(EXPERIMENTS[0].id);
     setIsPouring(false);
     setStudentName('');
-    setRedirectCountdown(10);
+    setRedirectCountdown(REDIRECT_COUNTDOWN_SECONDS);
     setIsAuthorized(false);
     setGameSessionId((id) => id + 1);
   };
@@ -1476,18 +1637,22 @@ export default function ColorGame({ onGameComplete }) {
   useEffect(() => {
     if (!completed) return;
 
-    setRedirectCountdown(10);
-    const countdownInterval = setInterval(() => {
-      setRedirectCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+    setRedirectCountdown(REDIRECT_COUNTDOWN_SECONDS);
+    let remaining = REDIRECT_COUNTDOWN_SECONDS;
+
+    redirectTimerRef.current = setInterval(() => {
+      remaining -= 1;
+      setRedirectCountdown(remaining);
+      if (remaining <= 0) {
+        finishAndReturnToStart();
+      }
     }, 1000);
 
-    const redirectTimer = setTimeout(() => {
-      finishAndReturnToStart();
-    }, 5000);
-
     return () => {
-      clearInterval(countdownInterval);
-      clearTimeout(redirectTimer);
+      if (redirectTimerRef.current) {
+        clearInterval(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
     };
   }, [completed]);
 
@@ -1573,7 +1738,7 @@ export default function ColorGame({ onGameComplete }) {
                 </ol>
               </div>
  
-              <div className="sidebar-section">
+              <div className="sidebar-section potion-picker">
                 <h3 className="section-title">Elige tu poción</h3>
                 <div className="active-experiment-selector">
                   {EXPERIMENTS.map((exp) => {
@@ -1585,10 +1750,12 @@ export default function ColorGame({ onGameComplete }) {
                       className={`experiment-select-btn ${exp.cssClass} ${activeGoal === exp.id ? 'selected' : ''} ${status === EXPERIMENT_STATUS.PASSED ? 'solved' : ''} ${status === EXPERIMENT_STATUS.FAILED ? 'failed' : ''}`}
                       onClick={() => setActiveGoal(exp.id)}
                       disabled={locked || isPouring}
+                      aria-label={exp.label}
                     >
                       <span className="emoji">{exp.emoji}</span>
                       <div className="details">
-                        <span className="name">{exp.label}</span>
+                        <span className="name name-full">{exp.label}</span>
+                        <span className="name name-short">{exp.shortLabel}</span>
                         <span className="status">
                           {status === EXPERIMENT_STATUS.PASSED
                             ? '✅ Correcta'
@@ -1650,6 +1817,16 @@ export default function ColorGame({ onGameComplete }) {
             <p className="redirect-notice">
               Volviendo al inicio en {redirectCountdown}s…
             </p>
+
+            <div className="diploma-actions">
+              <button
+                type="button"
+                className="cyber-btn primary-glow diploma-done-btn"
+                onClick={finishAndReturnToStart}
+              >
+                Listo — Volver al inicio
+              </button>
+            </div>
           </div>
         </div>
       )}

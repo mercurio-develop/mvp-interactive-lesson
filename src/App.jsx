@@ -21,7 +21,7 @@ function App() {
         <div className="title-logo">
           <div className="flask-glow-icon">🧪</div>
           <div>
-            <h1>EL LABORATORIO DE ARTE</h1>
+            <h1>EL LABORATORIO SECRETO DE LOS COLORES</h1>
             <p className="subtitle">Prueba de mezcla de colores</p>
           </div>
         </div>
@@ -39,7 +39,7 @@ function App() {
       )}
 
       <footer className="app-main-footer">
-        <p>© 2026 - El Laboratorio de Arte</p>
+        <p>© 2026 - El Laboratorio Secreto de los Colores</p>
       </footer>
     </div>
   );

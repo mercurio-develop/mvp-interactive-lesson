@@ -17,13 +17,34 @@ function TeacherDashboard({ onClose }) {
   const expectedPin = import.meta.env.VITE_TEACHER_PIN || '1234';
 
   useEffect(() => {
-    const isCloud = resultsService.isCloudConnected();
-    setSyncStatus({
-      isCloud,
-      msg: isCloud
-        ? 'Sincronizado con la Nube ☁️'
-        : 'Modo Local Simulado (Sin Conexión) 🔌'
-    });
+    let cancelled = false;
+
+    (async () => {
+      const configured = resultsService.isCloudConfigured();
+      if (!configured) {
+        if (!cancelled) {
+          setSyncStatus({
+            isCloud: false,
+            msg: 'Modo Local Simulado (Sin Conexión) 🔌',
+          });
+        }
+        return;
+      }
+
+      const isCloud = await resultsService.isCloudConnected();
+      if (!cancelled) {
+        setSyncStatus({
+          isCloud,
+          msg: isCloud
+            ? 'Sincronizado con la Nube ☁️'
+            : 'Supabase configurado, pero sin conexión a la base de datos ⚠️',
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const loadResults = async () => {
@@ -31,8 +52,19 @@ function TeacherDashboard({ onClose }) {
     try {
       const data = await resultsService.getResults();
       setResults(data);
+      const configured = resultsService.isCloudConfigured();
+      const isCloud = configured ? await resultsService.isCloudConnected() : false;
+      setSyncStatus({
+        isCloud,
+        msg: isCloud
+          ? `Sincronizado con la Nube ☁️ (${data.length} resultados)`
+          : configured
+            ? 'Datos locales — no se pudo conectar con Supabase ⚠️'
+            : 'Modo Local (configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en producción) 🔌',
+      });
     } catch (e) {
       console.error(e);
+      setSyncStatus({ isCloud: false, msg: 'Error al cargar resultados ⚠️' });
     } finally {
       setLoading(false);
     }
@@ -74,12 +106,12 @@ function TeacherDashboard({ onClose }) {
 
     // Header definition
     const headers = ['Nombre', 'Correctas', 'Total', 'Aprobado', 'Fecha y Hora'];
-    const rows = results.map(r => [
+    const rows = results.map((r) => [
       r.studentName,
       r.successes ?? 0,
       r.totalExperiments ?? 3,
       r.allPassed ? 'Si' : 'No',
-      new Date(r.timestamp).toLocaleString()
+      new Date(r.timestamp).toLocaleString(),
     ]);
 
     // CSV compile

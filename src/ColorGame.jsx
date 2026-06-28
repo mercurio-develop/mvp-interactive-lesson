@@ -16,7 +16,7 @@ export default function ColorGame({ onGameComplete }) {
   const [activeGoal, setActiveGoal] = useState(EXPERIMENTS[0].id);
   const [isPouring, setIsPouring] = useState(false);
   const [gameSessionId, setGameSessionId] = useState(0);
-  const [redirectCountdown, setRedirectCountdown] = useState(5);
+  const [redirectCountdown, setRedirectCountdown] = useState(10);
 
   const gameRef = useRef(null);
   const phaserGame = useRef(null);
@@ -1468,7 +1468,7 @@ export default function ColorGame({ onGameComplete }) {
     setActiveGoal(EXPERIMENTS[0].id);
     setIsPouring(false);
     setStudentName('');
-    setRedirectCountdown(5);
+    setRedirectCountdown(10);
     setIsAuthorized(false);
     setGameSessionId((id) => id + 1);
   };
@@ -1476,7 +1476,7 @@ export default function ColorGame({ onGameComplete }) {
   useEffect(() => {
     if (!completed) return;
 
-    setRedirectCountdown(5);
+    setRedirectCountdown(10);
     const countdownInterval = setInterval(() => {
       setRedirectCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);

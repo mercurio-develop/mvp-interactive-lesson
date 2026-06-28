@@ -8,7 +8,10 @@ function App() {
   const [showTeacherDashboard, setShowTeacherDashboard] = useState(false);
 
   const handleGameComplete = async (sessionData) => {
-    await resultsService.saveResult(sessionData);
+    const result = await resultsService.saveResult(sessionData);
+    if (!result.success) {
+      console.error('Could not save to cloud; stored locally only.', result.error);
+    }
   };
 
   return (

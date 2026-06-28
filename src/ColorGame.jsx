@@ -15,9 +15,11 @@ export default function ColorGame({ onGameComplete }) {
 
   const [activeGoal, setActiveGoal] = useState(EXPERIMENTS[0].id);
   const [isPouring, setIsPouring] = useState(false);
+  const [gameSessionId, setGameSessionId] = useState(0);
 
   const gameRef = useRef(null);
   const phaserGame = useRef(null);
+  const activeGameSessionRef = useRef(0);
 
   const passedCount = countPassed(experimentStatus);
 
@@ -70,21 +72,32 @@ export default function ColorGame({ onGameComplete }) {
     // Instantiate Phaser Game
     const game = new Phaser.Game(config);
     phaserGame.current = game;
+    const session = gameSessionId;
+    const isCurrentSession = () =>
+      activeGameSessionRef.current === session && phaserGame.current === game;
 
     // Pass data registry parameters
     game.registry.set('studentName', studentName);
     game.registry.set('activeGoal', activeGoal);
 
     game.events.on('stats-updated', (data) => {
+      if (!isCurrentSession()) return;
       setExperimentStatus(data.experimentStatus);
     });
 
     game.events.on('update-active-goal-react', (newGoal) => {
+      if (!isCurrentSession()) return;
       setActiveGoal(newGoal);
     });
 
-    game.events.on('pour-started', () => setIsPouring(true));
-    game.events.on('pour-finished', () => setIsPouring(false));
+    game.events.on('pour-started', () => {
+      if (!isCurrentSession()) return;
+      setIsPouring(true);
+    });
+    game.events.on('pour-finished', () => {
+      if (!isCurrentSession()) return;
+      setIsPouring(false);
+    });
 
     game.events.on('trigger-pour-sfx', () => {
       audioService.playPour();
@@ -100,6 +113,7 @@ export default function ColorGame({ onGameComplete }) {
     });
 
     game.events.on('game-finished', (data) => {
+      if (!isCurrentSession()) return;
       setCompleted(true);
       setAllPassed(data.allPassed);
 
@@ -1402,14 +1416,22 @@ export default function ColorGame({ onGameComplete }) {
       graphics.fillPath();
     }
 
+    const onResize = () => {
+      if (phaserGame.current?.scale) {
+        phaserGame.current.scale.refresh();
+      }
+    };
+    window.addEventListener('resize', onResize);
+
     return () => {
+      window.removeEventListener('resize', onResize);
       // Destroy Phaser Instance on component unmount
       if (phaserGame.current) {
         phaserGame.current.destroy(true);
         phaserGame.current = null;
       }
     };
-  }, [isAuthorized]);
+  }, [isAuthorized, gameSessionId]);
 
   useEffect(() => {
     if (!isAuthorized || completed) return;
@@ -1438,16 +1460,13 @@ export default function ColorGame({ onGameComplete }) {
   };
 
   const handleRestart = () => {
+    activeGameSessionRef.current += 1;
     setCompleted(false);
-    setExperimentStatus({ ...INITIAL_EXPERIMENT_STATUS });
     setAllPassed(false);
+    setExperimentStatus({ ...INITIAL_EXPERIMENT_STATUS });
     setActiveGoal(EXPERIMENTS[0].id);
     setIsPouring(false);
-
-    setIsAuthorized(false);
-    setTimeout(() => {
-      setIsAuthorized(true);
-    }, 100);
+    setGameSessionId((id) => id + 1);
   };
 
   return (
@@ -1571,7 +1590,7 @@ export default function ColorGame({ onGameComplete }) {
  
             {/* Core Game Render Canvas */}
             <main className="canvas-wrapper">
-              <div ref={gameRef} className="phaser-canvas-container" id="phaser-canvas-container" />
+              <div ref={gameRef} key={gameSessionId} className="phaser-canvas-container" id="phaser-canvas-container" />
               <div className="canvas-scanner-overlay"></div>
             </main>
           </div>

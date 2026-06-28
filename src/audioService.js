@@ -161,51 +161,70 @@ class WebAudioSynth {
 
   startBgm() {
     this.init();
-    if (!this.ctx || this.bgmOsc) return;
+    if (!this.ctx) return;
     
+    this.bgmPlaying = true;
+    if (!this.musicTimeout) {
+      this.playMusicBox();
+    }
+  }
+
+  playMusicBox() {
+    if (!this.bgmPlaying || !this.ctx || this.muted) return;
     const now = this.ctx.currentTime;
-    this.bgmOsc = this.ctx.createOscillator();
-    this.bgmLfo = this.ctx.createOscillator();
-    const lfoGain = this.ctx.createGain();
-    this.bgmGain = this.ctx.createGain();
     
-    // Gentle deep space/sci-fi laboratory drone (65Hz hum)
-    this.bgmOsc.type = 'sine';
-    this.bgmOsc.frequency.setValueAtTime(65, now);
+    // Whimsical Ghibli pentatonic scale notes (C4, D4, E4, G4, A4, C5, D5, E5, G5, A5)
+    const freqs = [
+      261.63, 293.66, 329.63, 392.00, 440.00,
+      523.25, 587.33, 659.25, 783.99, 880.00
+    ];
     
-    // Slow LFO to wobble the frequency slightly (pulsing machine sound)
-    this.bgmLfo.type = 'sine';
-    this.bgmLfo.frequency.setValueAtTime(0.15, now);
-    lfoGain.gain.setValueAtTime(5, now);
+    // Pick a random frequency for the chime sound
+    const freq = freqs[Math.floor(Math.random() * freqs.length)];
     
-    this.bgmLfo.connect(lfoGain);
-    lfoGain.connect(this.bgmOsc.frequency);
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
     
-    this.bgmGain.gain.setValueAtTime(this.muted ? 0 : 0.05, now);
+    // Soft sine wave resembles a cozy wooden chime/music box
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
     
-    this.bgmOsc.connect(this.bgmGain);
-    this.bgmGain.connect(this.ctx.destination);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.04, now + 0.08); // Relaxing, low background volume
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5); // Warm, gentle decay
     
-    this.bgmLfo.start();
-    this.bgmOsc.start();
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 2.5);
+    
+    // Schedule the next note at a randomized organic interval (800ms - 2200ms)
+    const nextDelay = 800 + Math.random() * 1400;
+    this.musicTimeout = setTimeout(() => {
+      this.playMusicBox();
+    }, nextDelay);
   }
 
   stopBgm() {
-    if (this.bgmOsc) {
-      try {
-        this.bgmOsc.stop();
-        this.bgmLfo.stop();
-      } catch (e) {}
-      this.bgmOsc = null;
-      this.bgmLfo = null;
-      this.bgmGain = null;
+    this.bgmPlaying = false;
+    if (this.musicTimeout) {
+      clearTimeout(this.musicTimeout);
+      this.musicTimeout = null;
     }
   }
 
   setMute(isMuted) {
     this.muted = isMuted;
-    if (this.bgmGain && this.ctx) {
-      this.bgmGain.gain.setValueAtTime(isMuted ? 0 : 0.05, this.ctx.currentTime);
+    if (!isMuted && this.bgmPlaying) {
+      if (!this.musicTimeout) {
+        this.playMusicBox();
+      }
+    } else if (isMuted) {
+      if (this.musicTimeout) {
+        clearTimeout(this.musicTimeout);
+        this.musicTimeout = null;
+      }
     }
   }
 }

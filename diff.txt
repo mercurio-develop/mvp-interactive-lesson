@@ -1,0 +1,509 @@
+src/ColorGame.jsx | 765 +++++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 436 insertions(+), 329 deletions(-)
+
+--- Changes ---
+
+src/ColorGame.jsx
+  @@ -210,10 +210,10 @@
+  -        fontFamily: 'Courier, Monaco, monospace',
+  +        fontFamily: "'Fredoka', sans-serif",
+           fontSize: '13px',
+           fontStyle: 'bold',
+  -        color: '#1e293b',
+  +        color: '#451a03',
+           align: 'center'
+         }).setOrigin(0.5);
+         scene.speechContainer.add(scene.speechBubble);
+  @@ -224,119 +224,184 @@
+  -        // Crazy hair back
+  -        graphics.fillStyle(0xd1d5db, 1);
+  -        graphics.fillCircle(-25, -60, 24);
+  -        graphics.fillCircle(25, -60, 24);
+  -        graphics.fillCircle(-45, -35, 22);
+  -        graphics.fillCircle(45, -35, 22);
+  -        graphics.fillCircle(-45, -10, 20);
+  -        graphics.fillCircle(45, -10, 20);
+  -        graphics.fillCircle(0, -75, 28);
+  -
+  -        // Head/Face skin based on reaction
+  -        let skinColor = 0xfde047; // standard crazy yellow
+  -        if (state === 'happy') skinColor = 0xa7f3d0; // green-blue positive
+  -        if (state === 'shocked') skinColor = 0xfecaca; // red blushing negative
+  -        if (state === 'confused') skinColor = 0xe2e8f0; // pale grey confused
+  -
+  -        graphics.fillStyle(skinColor, 1);
+  -        graphics.fillCircle(0, -25, 32);
+  +        // 1. Pointy Woodland Ears
+  +        // Left Ear
+  +        graphics.fillStyle(0xa3b5c2, 1);
+  +        graphics.beginPath();
+  +        graphics.moveTo(-25, -60);
+  +        graphics.lineTo(-30, -90);
+  +        graphics.lineTo(-12, -65);
+  +        graphics.closePath();
+  +        graphics.fillPath();
+  +
+  +        // Right Ear
+  +        graphics.beginPath();
+  +        graphics.moveTo(25, -60);
+  +        graphics.lineTo(30, -90);
+  +        graphics.lineTo(12, -65);
+  +        graphics.closePath();
+  +        graphics.fillPath();
+  +
+  +        // Inner ears (pink tint)
+  +        graphics.fillStyle(0xfecaca, 1);
+  +        graphics.beginPath();
+  +        graphics.moveTo(-22, -63);
+  +        graphics.lineTo(-26, -82);
+  +        graphics.lineTo(-16, -65);
+  +        graphics.closePath();
+  +        graphics.fillPath();
+  +
+  +        graphics.beginPath();
+  +        graphics.moveTo(22, -63);
+  +        graphics.lineTo(26, -82);
+  +        graphics.lineTo(16, -65);
+  +        graphics.closePath();
+  +        graphics.fillPath();
+  +
+  +        // 2. Main rounded body
+  +        graphics.fillStyle(0xa3b5c2, 1);
+  +        graphics.fillEllipse(0, -10, 100, 110);
+  +
+  +        // 3. Fluffy tail
+  +        graphics.fillCircle(-45, 25, 20);
+  +
+  +        // 4. Cream Belly patch
+  +        graphics.fillStyle(0xfef3c7, 1);
+  +        graphics.fillEllipse(0, 12, 65, 75);
+  +
+  +        // 5. Belly Arrows (crescents)
+  +        graphics.lineStyle(2.5, 0x78350f, 0.85);
+  +        // Top arrow
+  +        graphics.beginPath();
+  +        graphics.moveTo(-8, 0);
+  +        graphics.lineTo(0, -6);
+  +        graphics.lineTo(8, 0);
+  +        graphics.strokePath();
+  +
+  +        // Left bottom arrow
+  +        graphics.beginPath();
+  +        graphics.moveTo(-18, 18);
+  +        graphics.lineTo(-12, 12);
+  +        graphics.lineTo(-6, 18);
+  +        graphics.strokePath();
+  +
+  +        // Right bottom arrow
+  +        graphics.beginPath();
+  +        graphics.moveTo(6, 18);
+  +        graphics.lineTo(12, 12);
+  +        graphics.lineTo(18, 18);
+  +        graphics.strokePath();
+  +
+  +        // 6. Cute Rosy Cheek Blush
+  +        let blushScale = 1.0;
+  +        if (state === 'happy') blushScale = 1.4;
+  +        graphics.fillStyle(0xfca5a5, 0.7);
+  +        graphics.fillCircle(-28, -12, 11 * blushScale);
+  +        graphics.fillCircle(28, -12, 11 * blushScale);
+  +
+  +        // 7. Curious Big Eyes
+  +        graphics.fillStyle(0xffffff, 1);
+  +        graphics.fillCircle(-18, -26, 12);
+  +        graphics.fillCircle(18, -26, 12);
+  +
+  +        // Pupils & Eyelids depending on state
+  +        if (state === 'happy') {
+  ... (truncated)
+  @@ -357,16 +422,16 @@
+  -          const words = ["¡ESPECTACULAR!", "¡QUÍMICA PERFECTA!", "¡EXCELENTE!", "¡FÓRMULA ÉPICA!"];
+  +          const words = ["¡Qué magia! ✨", "¡Me encanta! 🌸", "¡Qué bonito!", "¡Súper bien! 🌟", "¡Maravilloso! 🍃"];
+             msg = words[Math.floor(Math.random() * words.length)];
+           } else if (state === 'shocked') {
+  -          const words = ["¡CUIDADO!", "¡BUM!", "¡VAYA EXPLOSIÓN!", "¡FÓRMULA ERRÓNEA!"];
+  +          const words = ["¡Uy! 😮", "¡Qué sorpresa!", "¡Oh no!", "¡Inténtalo otra vez! 💕"];
+             msg = words[Math.floor(Math.random() * words.length)];
+           } else if (state === 'confused') {
+  -          const words = ["¿QUÉ ES ESTO?", "¡LODO GRIS!", "MEZCLA INESTABLE", "VACIAR FLASCO"];
+  +          const words = ["¿Qué es esto? 🤔", "¡Pintura gris!", "¡Vamos a limpiarla! 🍃", "¡Agua para las plantas! 💧"];
+             msg = words[Math.floor(Math.random() * words.length)];
+           }
+  -
+  + 
+           if (msg) {
+             scene.speechText.setText(msg);
+             scene.speechBubble.clear();
+  @@ -374,9 +439,9 @@
+  -          // Draw Bubble container
+  +          // Draw Bubble container with soft cozy colors
+             scene.speechBubble.fillStyle(0xffffff, 0.95);
+  -          scene.speechBubble.lineStyle(2, 0x0f172a, 1);
+  +          scene.speechBubble.lineStyle(2, 0x78350f, 1); // cozy brown
+             scene.speechBubble.fillRoundedRect(-w/2, -h/2, w, h, 8);
+             scene.speechBubble.strokeRoundedRect(-w/2, -h/2, w, h, 8);
+             
+  @@ -387,7 +452,7 @@
+  -          scene.speechBubble.strokePath();
+  +          scene.speechBubble.strokePath();ble.strokePath();
+   
+             scene.speechContainer.alpha = 1;
+             scene.speechContainer.y = -90;
+  @@ -408,34 +473,34 @@
+  -      // 4. Mixing Flask (El Mezclador)
+  +      // 4. Mixing Jar (El Mezclador Mágico)
+         // Placed exactly centered between scientist's hands. Y synced in update()
+         scene.mixingFlaskContainer = scene.add.container(220, 440);
+         scene.mixingFlaskGraphics = scene.add.graphics();
+         scene.mixingFlaskContainer.add(scene.mixingFlaskGraphics);
+   
+  -      // Label above mixing flask
+  -      scene.mixingLabelText = scene.add.text(0, -68, 'MATRAZ VACÍO', {
+  -        fontFamily: 'Courier, Monaco, monospace',
+  -        fontSize: '11px',
+  +      // Label above mixing jar
+  +      scene.mixingLabelText = scene.add.text(0, -68, 'JARRITA VACÍA 🏺', {
+  +        fontFamily: "'Fredoka', sans-serif",
+  +        fontSize: '13px',
+           fontStyle: 'bold',
+  -        color: '#94a3b8',
+  +        color: '#78350f',
+           align: 'center'
+         }).setOrigin(0.5);
+         scene.mixingFlaskContainer.add(scene.mixingLabelText);
+   
+         // Drag instruction hint
+  -      scene.dragHintText = scene.add.text(0, 68, '¡Arrastrar al objetivo!', {
+  -        fontFamily: 'Courier, Monaco, monospace',
+  -        fontSize: '11px',
+  +      scene.dragHintText = scene.add.text(0, 68, '¡Llévala a una flor! 🌸', {
+  +        fontFamily: "'Fredoka', sans-serif",
+  +        fontSize: '12px',
+           fontStyle: 'bold',
+  -        color: '#f43f5e',
+  +        color: '#d97706',
+           align: 'center'
+         }).setOrigin(0.5);
+         scene.dragHintText.alpha = 0;
+         scene.mixingFlaskContainer.add(scene.dragHintText);
+   
+  -      // Function to render the Mixing Flask state
+  +      // Function to render the Mixing Jar state
+         scene.drawMixingFlask = function () {
+           const graphics = scene.mixingFlaskGraphics;
+           const colorHex = scene.currentColorHex;
+  @@ -445,34 +510,21 @@
+  -          graphics.lineStyle(7, colorHex, 0.25);
+  +          graphics.lineStyle(6, colorHex, 0.3);
+             drawFlaskSilhouette(graphics, 0, 0, 80, 100);
+           }
+   
+  -        // 2. Draw liquid inside matching the flask's inner geometry
+  +        // 2. Draw liquid inside matching the jar's inner geometry
+           if (level > 0) {
+             graphics.fillStyle(colorHex, 0.85);
+             drawLiquidFill(graphics, 0, 0, 80, 100, level);
+           }
+   
+  -        // 3. Draw outer glass container contour
+  -        graphics.lineStyle(3, 0xffffff, 0.7);
+  +        // 3. Draw outer glass container contour (using wood-brown outline)
+  +        graphics.lineStyle(3.5, 0x78350f, 0.9);
+           drawFlaskSilhouette(graphics, 0, 0, 80, 100);
+   
+  -        // 4. Graduation ticks (laboratory markings)
+  -        graphics.lineStyle(1.5, 0xffffff, 0.4);
+  -        const startY = 40; // bottom
+  -        const endY = -20;  // neck base
+  -        for (let i = 1; i <= 3; i++) {
+  -          const ratio = 0.25 * i;
+  -          const markY = startY - (startY - endY) * ratio;
+  -          // Interpolate width at height
+  -          const widthAtY = 80 - (80 - 24) * ratio;
+  -          const halfW = widthAtY / 2;
+  -          graphics.lineBetween(-halfW + 4, markY, -halfW + 12, markY);
+  -        }
+  -
+  -        // 5. White light glossy sheen highlight
+  +        // 4. White light glossy sheen highlight
+           graphics.lineStyle(2, 0xffffff, 0.45);
+           graphics.beginPath();
+           graphics.arc(20, 20, 14, -Math.PI / 4, Math.PI / 4, false);
+  @@ -498,31 +550,49 @@
+  -      // Draw standard laboratory wooden/metallic shelf bar
+  +      // Draw a rustic wooden log shelf with cute little green leaves sprouting!
+         const shelfBar = scene.add.graphics();
+  -      shelfBar.fillStyle(0x1e293b, 0.8);
+  -      shelfBar.lineStyle(2, 0x3b82f6, 0.4);
+  -      shelfBar.fillRoundedRect(startX - 70, shelfY + 50, 360, 12, 4);
+  -      shelfBar.strokeRoundedRect(startX - 70, shelfY + 50, 360, 12, 4);
+  -
+  +      shelfBar.fillStyle(0x78350f, 0.9); // wood brown
+  +      shelfBar.lineStyle(3, 0x451a03, 1);
+  +      shelfBar.fillRoundedRect(startX - 70, shelfY + 50, 360, 16, 6);
+  +      shelfBar.strokeRoundedRect(startX - 70, shelfY + 50, 360, 16, 6);
+  + 
+  +      // Sprouts on the wooden log
+  +      shelfBar.fillStyle(0x22c55e, 1);
+  +      shelfBar.lineStyle(1, 0x166534, 1);
+  +      
+  +      // leaf 1 left
+  +      shelfBar.beginPath();
+  +      shelfBar.ellipse(startX - 60, shelfY + 46, 7, 4, -Math.PI / 6, 0, Math.PI * 2);
+  +      shelfBar.closePath();
+  +      shelfBar.fillPath();
+  +      shelfBar.strokePath();
+  + 
+  +      // leaf 2 right
+  +      shelfBar.beginPath();
+  +      shelfBar.ellipse(startX + 280, shelfY + 46, 7, 4, Math.PI / 6, 0, Math.PI * 2);
+  +      shelfBar.closePath();
+  +      shelfBar.fillPath();
+  +      shelfBar.strokePath();
+  + 
+         const colorsData = [
+  -        { colorKey: 'Rojo', hex: scene.colors.Rojo.hex, label: 'ROJO' },
+  -        { colorKey: 'Azul', hex: scene.colors.Azul.hex, label: 'AZUL' },
+  -        { colorKey: 'Amarillo', hex: scene.colors.Amarillo.hex, label: 'AMARILLO' }
+  +        { colorKey: 'Rojo', hex: scene.colors.Rojo.hex, label: 'FRESA 🍓' },
+  +        { colorKey: 'Azul', hex: scene.colors.Azul.hex, label: 'ARÁNDANO 🫐' },
+  +        { colorKey: 'Amarillo', hex: scene.colors.Amarillo.hex, label: 'GIRASOL 🌻' }
+         ];
+  -
+  + 
+         colorsData.forEach((tubeInfo, index) => {
+           const tx = startX + index * tubeSpacing;
+           const ty = shelfY;
+  -
+  + 
+           const tubeContainer = scene.add.container(tx, ty);
+           const tubeGraphics = scene.add.graphics();
+           tubeContainer.add(tubeGraphics);
+  -
+  + 
+           // Draw tube graphics (static contents, filled 70%)
+           scene.drawTestTubeGraphic = function (graphics, colorHex) {
+             graphics.clear();
+  -
+  + 
+             // Liquid
+             graphics.fillStyle(colorHex, 0.85);
+             graphics.beginPath();
+  @@ -535,9 +605,9 @@
+  -
+  -          // Glass outline
+  -          graphics.lineStyle(3, 0xffffff, 0.65);
+  + 
+  +          // Glass outline (using wood-brown outline)
+  +          graphics.lineStyle(3.5, 0x78350f, 0.9);
+             graphics.beginPath();
+             // Lip top
+             graphics.moveTo(-15, -45);
+  @@ -548,7 +618,7 @@
+  -
+  + 
+             // Cork stopper
+             graphics.fillStyle(0xa16207, 1); // wooden brown
+             graphics.beginPath();
+  @@ -558,23 +628,32 @@
+  -
+  + 
+  +          // Draw string and tiny leaf tied around cork
+  +          graphics.lineStyle(1.5, 0x8b5a2b, 0.8);
+  +          graphics.lineBetween(-8, -48, 8, -48);
+  +          graphics.fillStyle(0x4ade80, 0.95);
+  +          graphics.beginPath();
+  +          graphics.ellipse(6, -42, 5, 3.5, Math.PI / 4, 0, Math.PI * 2);
+  +          graphics.closePath();
+  +          graphics.fillPath();
+  + 
+             // Highlight reflect
+  -          graphics.lineStyle(2, 0xffffff, 0.4);
+  +          graphics.lineStyle(1.5, 0xffffff, 0.35);
+             graphics.lineBetween(-7, -35, -7, 20);
+           };
+  -
+  + 
+           scene.drawTestTubeGraphic(tubeGraphics, tubeInfo.hex);
+  -
+  -        // Add Label Text below the tube
+  + 
+  +        // Add Label Text below the tube (using Fredoka font)
+           const label = scene.add.text(0, 68, tubeInfo.label, {
+  -          fontFamily: 'Courier, Monaco, monospace',
+  +          fontFamily: "'Fredoka', sans-serif",
+             fontSize: '12px',
+             fontStyle: 'bold',
+  -          color: '#cbd5e1'
+  +          color: '#78350f'
+           }).setOrigin(0.5);
+           tubeContainer.add(label);
+  -
+  + 
+           // Setup interaction
+           tubeContainer.setSize(34, 115);
+           tubeContainer.setInteractive({ draggable: true });
+  @@ -584,47 +663,48 @@
+  -
+  + 
+           scene.tubes.push(tubeContainer);
+         });
+  -
+  -      // 6. Target Flasks on the Right (Violeta, Verde, Anaranjado)
+  + 
+  +      // 6. Target Jars on the Right (Violeta, Verde, Anaranjado)
+         scene.targets = {};
+         const targetColumnX = 780;
+         const targetColumnYStart = 120;
+         const targetSpacing = 165;
+  -
+  + 
+         const targetsData = [
+  -        { name: 'Violeta', hex: scene.colors.Violeta.hex, label: 'VIOLETA (Rojo + Azul)' },
+  -        { name: 'Verde', hex: scene.colors.Verde.hex, label: 'VERDE (Azul + Amarillo)' },
+  -        { name: 'Anaranjado', hex: scene.colors.Anaranjado.hex, label: 'ANARANJADO (Rojo + Amarillo)' }
+  +        { name: 'Violeta', hex: scene.colors.Violeta.hex, label: 'VIOLETA 🪻 (Fresa + Arándano)' },
+  +        { name: 'Verde', hex: scene.colors.Verde.hex, label: 'VERDE 🍃 (Arándano + Girasol)' },
+  +        { name: 'Anaranjado', hex: scene.colors.Anaranjado.hex, label: 'NARANJA 🍊 (Fresa + Girasol)' }
+         ];
+  -
+  + 
+         targetsData.forEach((tgtInfo, index) => {
+           const ty = targetColumnYStart + index * targetSpacing;
+  -
+  + 
+           const targetContainer = scene.add.container(targetColumnX, ty);
+           const outlineGraphics = scene.add.graphics();
+           const solvedGraphics = scene.add.graphics();
+           targetContainer.add(outlineGraphics);
+           targetContainer.add(solvedGraphics);
+  -
+  -        // Labels
+  + 
+  +        // Labels (using Fredoka font)
+           const titleText = scene.add.text(0, -62, tgtInfo.name.toUpperCase(), {
+  -          fontFamily: 'Courier, Monaco, monospace',
+  +          fontFamily: "'Fredoka', sans-serif",
+             fontSize: '13px',
+             fontStyle: 'bold',
+             color: tgtInfo.hex
+           }).setOrigin(0.5);
+           targetContainer.add(titleText);
+  -
+  + 
+           const subText = scene.add.text(0, 60, tgtInfo.label, {
+  -          fontFamily: 'Courier, Monaco, monospace',
+  -          fontSize: '10px',
+  -          color: '#64748b'
+  +          fontFamily: "'Fredoka', sans-serif",
+  +          fontSize: '11px',
+  +          fontWeight: '600',
+  +          color: '#78350f'
+           }).setOrigin(0.5);
+           targetContainer.add(subText);
+  -
+  + 
+           // Star badge (hidden initially, pops up on solved)
+           const starText = scene.add.text(42, -30, '⭐', {
+             fontSize: '20px'
+  @@ -634,7 +714,6 @@
+  -          graphics.clear();
+             // Draw faint silhouette of target color
+             graphics.fillStyle(colorHex, 0.08);
+             drawLiquidFill(graphics, 0, 0, 70, 90, 0.8);
+  @@ -676,43 +755,43 @@
+  -      // 7. Manual Empty Button (Trash Bin / Drain)
+  +      // 7. Manual Empty Button (Water Plants to clean / Drain)
+         // Placed below the scientist
+         const dumpButtonContainer = scene.add.container(220, 525);
+         const dbGraphics = scene.add.graphics();
+  -      dbGraphics.fillStyle(0xef4444, 0.15);
+  -      dbGraphics.lineStyle(2, 0xef4444, 0.6);
+  -      dbGraphics.fillRoundedRect(-50, -15, 100, 30, 6);
+  -      dbGraphics.strokeRoundedRect(-50, -15, 100, 30, 6);
+  +      dbGraphics.fillStyle(0x22c55e, 0.15); // soft leaf green
+  +      dbGraphics.lineStyle(2, 0x15803d, 0.6);
+  +      dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
+  +      dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
+         dumpButtonContainer.add(dbGraphics);
+  -
+  -      const dbText = scene.add.text(0, 0, '⚠️ VACIAR', {
+  -        fontFamily: 'Courier, Monaco, monospace',
+  + 
+  +      const dbText = scene.add.text(0, 0, '🍃 REGAR JARDÍN', {
+  +        fontFamily: "'Fredoka', sans-serif",
+           fontSize: '11px',
+           fontStyle: 'bold',
+  -        color: '#f87171'
+  +        color: '#15803d'
+         }).setOrigin(0.5);
+         dumpButtonContainer.add(dbText);
+  -
+  -      dumpButtonContainer.setSize(100, 30);
+  + 
+  +      dumpButtonContainer.setSize(120, 30);
+         dumpButtonContainer.setInteractive({ useHandCursor: true });
+         
+         dumpButtonContainer.on('pointerover', () => {
+           dbGraphics.clear();
+  -        dbGraphics.fillStyle(0xef4444, 0.3);
+  -        dbGraphics.lineStyle(2, 0xef4444, 0.9);
+  -        dbGraphics.fillRoundedRect(-50, -15, 100, 30, 6);
+  -        dbGraphics.strokeRoundedRect(-50, -15, 100, 30, 6);
+  +        dbGraphics.fillStyle(0x22c55e, 0.3);
+  +        dbGraphics.lineStyle(2, 0x15803d, 0.9);
+  +        dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
+  +        dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
+         });
+  -
+  + 
+         dumpButtonContainer.on('pointerout', () => {
+           dbGraphics.clear();
+  -        dbGraphics.fillStyle(0xef4444, 0.15);
+  -        dbGraphics.lineStyle(2, 0xef4444, 0.6);
+  -        dbGraphics.fillRoundedRect(-50, -15, 100, 30, 6);
+  -        dbGraphics.strokeRoundedRect(-50, -15, 100, 30, 6);
+  +        dbGraphics.fillStyle(0x22c55e, 0.15);
+  +        dbGraphics.lineStyle(2, 0x15803d, 0.6);
+  +        dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
+  +        dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
+         });
+  -
+  + 
+         dumpButtonContainer.on('pointerdown', () => {
+           if (scene.currentLiquidLevel > 0) {
+             scene.emptyMixingFlask(true); // empty with pouring effect
+  @@ -813,8 +892,8 @@
+  -              const rewardText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '+100 EXP', {
+  -                fontFamily: 'Courier, Monaco, monospace',
+  +              const rewardText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '+100 MAGIA ✨', {
+  +                fontFamily: "'Fredoka', sans-serif",
+                   fontSize: '18px',
+                   fontStyle: 'bold',
+                   color: '#eab308'
+  @@ -880,8 +959,8 @@
+  -              const failText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '-25 EXP', {
+  -                fontFamily: 'Courier, Monaco, monospace',
+  +              const failText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '-25 MAGIA 🌧️', {
+  +                fontFamily: "'Fredoka', sans-serif",
+                   fontSize: '18px',
+                   fontStyle: 'bold',
+                   color: '#f43f5e'
+  @@ -1049,23 +1128,33 @@
+  -      // Chemical Color Mixing Equations
+  +      // Magic Color Mixing Equations
+         scene.processMixingChemistry = function (newColorKey, newColorHex) {
+           scene.mixedIngredients.push(newColorKey);
+  -
+  + 
+  +        const mapName = (k) => {
+  +          if (k === 'Rojo') return 'Fresa 🍓';
+  +          if (k === 'Azul') return 'Arándano 🫐';
+  +          if (k === 'Amarillo') return 'Girasol 🌻';
+  +          if (k === 'Violeta') return 'Violeta 🪻';
+  +          if (k === 'Verde') return 'Verde 🍃';
+  +          if (k === 'Anaranjado') return 'Naranja 🍊';
+
+... (more changes truncated)
+  +287 -201
+[full diff: rtk git diff --no-compact]

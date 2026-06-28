@@ -224,119 +224,236 @@ export default function ColorGame({ onGameComplete }) {
       scene.drawScientist = function (graphics, state = 'idle') {
         graphics.clear();
 
-        // Crazy hair back
-        graphics.fillStyle(0xd1d5db, 1);
-        graphics.fillCircle(-25, -60, 24);
-        graphics.fillCircle(25, -60, 24);
-        graphics.fillCircle(-45, -35, 22);
-        graphics.fillCircle(45, -35, 22);
-        graphics.fillCircle(-45, -10, 20);
-        graphics.fillCircle(45, -10, 20);
-        graphics.fillCircle(0, -75, 28);
+        // 1. Fluffy Cloud-like Crazy Hair
+        graphics.fillStyle(0xe2e8f0, 1); // soft white-grey hair
+        // Left fluffy cloud hair
+        graphics.fillCircle(-30, -60, 24);
+        graphics.fillCircle(-48, -40, 22);
+        graphics.fillCircle(-46, -15, 20);
+        // Right fluffy cloud hair
+        graphics.fillCircle(30, -60, 24);
+        graphics.fillCircle(48, -40, 22);
+        graphics.fillCircle(46, -15, 20);
+        // Top fluffy cloud hair
+        graphics.fillCircle(0, -74, 28);
+        graphics.fillCircle(-20, -70, 22);
+        graphics.fillCircle(20, -70, 22);
+        // Additional cute curls
+        graphics.fillCircle(-10, -82, 10);
+        graphics.fillCircle(10, -82, 10);
 
-        // Head/Face skin based on reaction
-        let skinColor = 0xfde047; // standard crazy yellow
-        if (state === 'happy') skinColor = 0xa7f3d0; // green-blue positive
-        if (state === 'shocked') skinColor = 0xfecaca; // red blushing negative
-        if (state === 'confused') skinColor = 0xe2e8f0; // pale grey confused
+        // 2. Round Friendly Face
+        graphics.fillStyle(0xffedd5, 1); // soft peach skin
+        graphics.fillCircle(0, -25, 34);
 
-        graphics.fillStyle(skinColor, 1);
-        graphics.fillCircle(0, -25, 32);
+        // 3. Cute Rosy Cheeks
+        let blushScale = 1.0;
+        if (state === 'happy') blushScale = 1.35;
+        graphics.fillStyle(0xfca5a5, 0.7);
+        graphics.fillCircle(-24, -14, 10 * blushScale);
+        graphics.fillCircle(24, -14, 10 * blushScale);
 
-        // Eyebrows
-        graphics.lineStyle(3, 0x1e293b, 1);
-        if (state === 'shocked') {
-          // Eyebrows raised high
-          graphics.lineBetween(-25, -48, -5, -45);
-          graphics.lineBetween(5, -45, 25, -48);
-        } else if (state === 'confused') {
-          // Curved asymmetrical eyebrows
-          graphics.lineBetween(-22, -42, -6, -45);
-          graphics.lineBetween(6, -42, 22, -46);
-        } else {
-          // Standard crazy eyebrows
-          graphics.lineBetween(-22, -45, -8, -41);
-          graphics.lineBetween(8, -41, 22, -45);
-        }
+        // 4. Oversized Round Glasses (Ghibli wizard style)
+        // Glasses Temple Side Arms
+        graphics.lineStyle(3, 0x78350f, 1);
+        graphics.lineBetween(-32, -26, -44, -20);
+        graphics.lineBetween(32, -26, 44, -20);
 
-        // Cyber lab Goggles
-        graphics.lineStyle(4, 0x06b6d4, 1); // Glowing cyan rim
-        let lensGlowAlpha = 0.55;
-        let lensColor = 0x0891b2;
+        // Frame
+        graphics.lineStyle(3.5, 0x78350f, 1); // wood brown frame
+        graphics.strokeCircle(-18, -26, 14);
+        graphics.strokeCircle(18, -26, 14);
+        // Bridge
+        graphics.lineBetween(-4, -26, 4, -26);
+
+        // Transparent cyan lenses
+        graphics.fillStyle(0x22d3ee, 0.15);
+        graphics.fillCircle(-18, -26, 13);
+        graphics.fillCircle(18, -26, 13);
+
+        // Lenses glare reflections
+        graphics.fillStyle(0xffffff, 0.45);
+        graphics.fillCircle(-14, -30, 4);
+        graphics.fillCircle(22, -30, 4);
+
+        // 5. Big Curious Eyes (drawn inside the frames)
         if (state === 'happy') {
-          lensGlowAlpha = 0.85;
-          lensColor = 0x10b981; // green glow
-        } else if (state === 'shocked') {
-          lensGlowAlpha = 0.9;
-          lensColor = 0xef4444; // red alert glow
-        }
-        
-        graphics.fillStyle(lensColor, lensGlowAlpha);
-        graphics.fillCircle(-16, -30, 13);
-        graphics.strokeCircle(-16, -30, 13);
-        graphics.fillCircle(16, -30, 13);
-        graphics.strokeCircle(16, -30, 13);
-
-        // Goggles strap
-        graphics.lineStyle(3, 0x0f172a, 1);
-        graphics.lineBetween(-32, -30, -16, -30);
-        graphics.lineBetween(16, -30, 32, -30);
-        graphics.lineBetween(-16, -30, 16, -30);
-
-        // Goggles Reflection
-        graphics.fillStyle(0xffffff, 0.4);
-        graphics.fillCircle(-12, -34, 4);
-        graphics.fillCircle(20, -34, 4);
-
-        // Mouth Reacts
-        graphics.lineStyle(3, 0x0f172a, 1);
-        if (state === 'happy') {
-          // Big smiling mouth
-          graphics.fillStyle(0x0f172a, 1);
+          // Smiling eyes ^ ^
+          graphics.lineStyle(3.5, 0x374151, 1);
           graphics.beginPath();
-          graphics.arc(0, -12, 10, 0, Math.PI, false);
+          graphics.arc(-18, -24, 7, Math.PI, 0, false);
+          graphics.strokePath();
+          graphics.beginPath();
+          graphics.arc(18, -24, 7, Math.PI, 0, false);
+          graphics.strokePath();
+        } else {
+          graphics.fillStyle(0xffffff, 1);
+          graphics.fillCircle(-18, -26, 8);
+          graphics.fillCircle(18, -26, 8);
+
+          let pupilRadius = 4;
+          let lookOffsetXLeft = 0;
+          let lookOffsetXRight = 0;
+          let lookOffsetY = 0;
+
+          graphics.fillStyle(0x374151, 1);
+          if (state === 'shocked') {
+            pupilRadius = 2.5; // tiny shocked pupils
+          } else if (state === 'confused') {
+            // crossed eyes
+            lookOffsetXLeft = 2;
+            lookOffsetXRight = -2;
+          }
+
+          graphics.fillCircle(-18 + lookOffsetXLeft, -26 + lookOffsetY, pupilRadius);
+          graphics.fillCircle(18 + lookOffsetXRight, -26 + lookOffsetY, pupilRadius);
+
+          // Sparkly eye highlight
+          if (state !== 'shocked') {
+            graphics.fillStyle(0xffffff, 1);
+            graphics.fillCircle(-17 + lookOffsetXLeft, -28 + lookOffsetY, 1.8);
+            graphics.fillCircle(19 + lookOffsetXRight, -28 + lookOffsetY, 1.8);
+          }
+        }
+
+        // 6. Fluffy Dynamic Eyebrows
+        graphics.fillStyle(0xe2e8f0, 1);
+        if (state === 'shocked') {
+          graphics.fillEllipse(-18, -49, 10, 5);
+          graphics.fillEllipse(18, -49, 10, 5);
+        } else if (state === 'confused') {
+          graphics.fillEllipse(-18, -40, 10, 5);
+          graphics.fillEllipse(18, -47, 10, 5);
+        } else if (state === 'happy') {
+          graphics.fillEllipse(-18, -46, 10, 5);
+          graphics.fillEllipse(18, -46, 10, 5);
+        } else {
+          graphics.fillEllipse(-18, -43, 10, 5);
+          graphics.fillEllipse(18, -43, 10, 5);
+        }
+
+        // 7. Button Nose
+        graphics.fillStyle(0xfca5a5, 1);
+        graphics.fillCircle(0, -18, 4.5);
+
+        // 8. Mouth Expressions
+        graphics.lineStyle(3, 0x374151, 1);
+        if (state === 'happy') {
+          graphics.fillStyle(0x374151, 1);
+          graphics.beginPath();
+          graphics.arc(0, -8, 8, 0, Math.PI, false);
           graphics.closePath();
           graphics.fillPath();
-          graphics.strokePath();
-        } else if (state === 'shocked') {
-          // Big circular gasp
-          graphics.fillStyle(0x0f172a, 1);
-          graphics.fillCircle(0, -10, 8);
-          graphics.strokeCircle(0, -10, 8);
-        } else if (state === 'confused') {
-          // Squiggly line mouth
+          // tongue
+          graphics.fillStyle(0xfecaca, 1);
           graphics.beginPath();
-          graphics.moveTo(-10, -12);
-          graphics.lineTo(-4, -8);
-          graphics.lineTo(2, -13);
-          graphics.lineTo(8, -9);
+          graphics.arc(0, -5, 5, 0, Math.PI, false);
+          graphics.closePath();
+          graphics.fillPath();
+        } else if (state === 'shocked') {
+          graphics.fillStyle(0x374151, 1);
+          graphics.fillCircle(0, -6, 6);
+        } else if (state === 'confused') {
+          graphics.beginPath();
+          graphics.moveTo(-8, -8);
+          graphics.lineTo(-4, -4);
+          graphics.lineTo(0, -8);
+          graphics.lineTo(4, -4);
+          graphics.lineTo(8, -8);
           graphics.strokePath();
         } else {
-          // Standard funny smile
           graphics.beginPath();
-          graphics.arc(0, -14, 8, 0, Math.PI, false);
+          graphics.arc(0, -10, 5, 0, Math.PI, false);
           graphics.strokePath();
         }
 
-        // Lab coat
+        // 9. White Lab Coat
         graphics.fillStyle(0xffffff, 1);
-        // Triangle collar
-        graphics.fillTriangle(-26, 8, 26, 8, 0, 42);
-        // Coat base
         graphics.fillRect(-38, 8, 76, 90);
-        graphics.lineStyle(3, 0xe2e8f0, 1);
-        graphics.lineBetween(0, 42, 0, 98); // button line
-        
-        // Shirt/Tie
-        graphics.fillStyle(0x4f46e5, 1); // Purple shirt
-        graphics.fillTriangle(-10, 8, 10, 8, 0, 25);
-        graphics.fillStyle(0xf43f5e, 1); // Pink tie
-        graphics.fillTriangle(-3, 20, 3, 20, 0, 36);
 
-        // Arms holding the flask
+        // Blue Shirt Collar
+        graphics.fillStyle(0x60a5fa, 1);
+        graphics.fillTriangle(-14, 8, 14, 8, 0, 24);
+
+        // Red Bow Tie (extremely Ghibli/wizard style!)
+        graphics.fillStyle(0xef4444, 1);
+        graphics.fillTriangle(-12, 12, 0, 20, -12, 28);
+        graphics.fillTriangle(12, 12, 0, 20, 12, 28);
+        graphics.fillCircle(0, 20, 4);
+
+        // Lab coat collar overlaps (lapels)
+        graphics.lineStyle(2, 0xd1d5db, 1);
+        graphics.lineBetween(-14, 8, -26, 38);
+        graphics.lineBetween(14, 8, 26, 38);
+
+        // Lab coat buttons
+        graphics.fillStyle(0xd1d5db, 1);
+        graphics.fillCircle(0, 50, 3.5);
+        graphics.fillCircle(0, 68, 3.5);
+        graphics.fillCircle(0, 86, 3.5);
+
+        // Lab coat pocket & blue pen sticking out
+        graphics.lineStyle(1.5, 0x78350f, 0.4);
+        graphics.strokeRect(12, 38, 14, 18);
+        graphics.fillStyle(0x3b82f6, 1); // Blue pen
+        graphics.fillRect(16, 32, 3, 10);
+
+        // 10. Angled Arms and Peach Hands holding the beaker
+        // Left sleeve
         graphics.fillStyle(0xffffff, 1);
-        graphics.fillRoundedRect(-58, 45, 28, 15, 6);
-        graphics.fillRoundedRect(30, 45, 28, 15, 6);
+        graphics.lineStyle(2, 0xd1d5db, 1);
+        graphics.beginPath();
+        graphics.moveTo(-34, 40);
+        graphics.lineTo(-14, 52);
+        graphics.lineTo(-18, 64);
+        graphics.lineTo(-36, 52);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
+
+        // Left hand skin (peach color with brown border)
+        graphics.fillStyle(0xffedd5, 1);
+        graphics.lineStyle(1.5, 0x78350f, 1);
+        graphics.beginPath();
+        graphics.arc(-13, 58, 8, 0, Math.PI * 2);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
+
+        // Left thumb
+        graphics.beginPath();
+        graphics.arc(-9, 54, 3, 0, Math.PI * 2);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
+
+        // Right sleeve
+        graphics.fillStyle(0xffffff, 1);
+        graphics.lineStyle(2, 0xd1d5db, 1);
+        graphics.beginPath();
+        graphics.moveTo(34, 40);
+        graphics.lineTo(14, 52);
+        graphics.lineTo(18, 64);
+        graphics.lineTo(36, 52);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
+
+        // Right hand skin
+        graphics.fillStyle(0xffedd5, 1);
+        graphics.lineStyle(1.5, 0x78350f, 1);
+        graphics.beginPath();
+        graphics.arc(13, 58, 8, 0, Math.PI * 2);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
+
+        // Right thumb
+        graphics.beginPath();
+        graphics.arc(9, 54, 3, 0, Math.PI * 2);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.strokePath();
       };
 
       // Draw initial Scientist state
@@ -357,16 +474,16 @@ export default function ColorGame({ onGameComplete }) {
         
         let msg = "";
         if (state === 'happy') {
-          const words = ["¡ESPECTACULAR!", "¡QUÍMICA PERFECTA!", "¡EXCELENTE!", "¡FÓRMULA ÉPICA!"];
+          const words = ["¡Fórmula mágica! 🧪", "¡Qué gran experimento! ✨", "¡Excelente mezcla! 🔬", "¡Súper científico! 🌟"];
           msg = words[Math.floor(Math.random() * words.length)];
         } else if (state === 'shocked') {
-          const words = ["¡CUIDADO!", "¡BUM!", "¡VAYA EXPLOSIÓN!", "¡FÓRMULA ERRÓNEA!"];
+          const words = ["¡Uy! Poción equivocada 😮", "¡Oh no, qué sorpresa! ⚡", "¡Volvamos a intentar! 💕", "¡Casi lo logras! 🔬"];
           msg = words[Math.floor(Math.random() * words.length)];
         } else if (state === 'confused') {
-          const words = ["¿QUÉ ES ESTO?", "¡LODO GRIS!", "MEZCLA INESTABLE", "VACIAR FLASCO"];
+          const words = ["¿Qué poción es esta? 🤔", "¡Se volvió inestable! ☁️", "¡Limpiemos el matraz! 🍃", "¡Vaciar el matraz! 🧪"];
           msg = words[Math.floor(Math.random() * words.length)];
         }
-
+ 
         if (msg) {
           scene.speechText.setText(msg);
           scene.speechBubble.clear();
@@ -374,9 +491,9 @@ export default function ColorGame({ onGameComplete }) {
           const w = scene.speechText.width + 24;
           const h = 32;
           
-          // Draw Bubble container
+          // Draw Bubble container with soft cozy colors
           scene.speechBubble.fillStyle(0xffffff, 0.95);
-          scene.speechBubble.lineStyle(2, 0x0f172a, 1);
+          scene.speechBubble.lineStyle(2, 0x78350f, 1); // cozy brown
           scene.speechBubble.fillRoundedRect(-w/2, -h/2, w, h, 8);
           scene.speechBubble.strokeRoundedRect(-w/2, -h/2, w, h, 8);
           
@@ -388,7 +505,7 @@ export default function ColorGame({ onGameComplete }) {
           scene.speechBubble.closePath();
           scene.speechBubble.fillPath();
           scene.speechBubble.strokePath();
-
+ 
           scene.speechContainer.alpha = 1;
           scene.speechContainer.y = -90;
 
@@ -409,27 +526,27 @@ export default function ColorGame({ onGameComplete }) {
       };
 
       // 4. Mixing Flask (El Mezclador)
-      // Placed exactly centered between scientist's hands. Y synced in update()
-      scene.mixingFlaskContainer = scene.add.container(220, 440);
+      // Placed to the right of the scientist. Y synced in update()
+      scene.mixingFlaskContainer = scene.add.container(350, 415);
       scene.mixingFlaskGraphics = scene.add.graphics();
       scene.mixingFlaskContainer.add(scene.mixingFlaskGraphics);
-
+ 
       // Label above mixing flask
-      scene.mixingLabelText = scene.add.text(0, -68, 'MATRAZ VACÍO', {
-        fontFamily: 'Courier, Monaco, monospace',
-        fontSize: '11px',
+      scene.mixingLabelText = scene.add.text(0, -68, 'MATRAZ VACÍO 🧪', {
+        fontFamily: "'Fredoka', sans-serif",
+        fontSize: '13px',
         fontStyle: 'bold',
-        color: '#94a3b8',
+        color: '#78350f',
         align: 'center'
       }).setOrigin(0.5);
       scene.mixingFlaskContainer.add(scene.mixingLabelText);
-
+ 
       // Drag instruction hint
-      scene.dragHintText = scene.add.text(0, 68, '¡Arrastrar al objetivo!', {
-        fontFamily: 'Courier, Monaco, monospace',
-        fontSize: '11px',
+      scene.dragHintText = scene.add.text(0, 68, '¡Arrastra al objetivo! 🧪', {
+        fontFamily: "'Fredoka', sans-serif",
+        fontSize: '12px',
         fontStyle: 'bold',
-        color: '#f43f5e',
+        color: '#d97706',
         align: 'center'
       }).setOrigin(0.5);
       scene.dragHintText.alpha = 0;
@@ -492,101 +609,101 @@ export default function ColorGame({ onGameComplete }) {
       // Initialize mixing flask drawing
       scene.drawMixingFlask();
 
-      // 5. Draw Primary Test Tubes at the Top (Horizontal shelf)
-      scene.tubes = [];
-      const tubeSpacing = 160;
-      const startX = 350;
-      const shelfY = 85;
-
-      // Draw standard laboratory wooden/metallic shelf bar
-      const shelfBar = scene.add.graphics();
-      shelfBar.fillStyle(0x1e293b, 0.8);
-      shelfBar.lineStyle(2, 0x3b82f6, 0.4);
-      shelfBar.fillRoundedRect(startX - 70, shelfY + 50, 360, 12, 4);
-      shelfBar.strokeRoundedRect(startX - 70, shelfY + 50, 360, 12, 4);
-
-      const colorsData = [
-        { colorKey: 'Rojo', hex: scene.colors.Rojo.hex, label: 'ROJO' },
-        { colorKey: 'Azul', hex: scene.colors.Azul.hex, label: 'AZUL' },
-        { colorKey: 'Amarillo', hex: scene.colors.Amarillo.hex, label: 'AMARILLO' }
-      ];
-
-      colorsData.forEach((tubeInfo, index) => {
-        const tx = startX + index * tubeSpacing;
-        const ty = shelfY;
-
-        const tubeContainer = scene.add.container(tx, ty);
-        const tubeGraphics = scene.add.graphics();
-        tubeContainer.add(tubeGraphics);
-
-        // Draw tube graphics (static contents, filled 70%)
-        scene.drawTestTubeGraphic = function (graphics, colorHex) {
-          graphics.clear();
-
-          // Liquid
-          graphics.fillStyle(colorHex, 0.85);
-          graphics.beginPath();
-          const liqY = -15; // 70% fill line
-          graphics.moveTo(-11, liqY);
-          graphics.lineTo(11, liqY);
-          graphics.lineTo(11, 28);
-          // bottom curve
-          graphics.arc(0, 28, 11, 0, Math.PI, false);
-          graphics.lineTo(-11, 28);
-          graphics.closePath();
-          graphics.fillPath();
-
-          // Glass outline
-          graphics.lineStyle(3, 0xffffff, 0.65);
-          graphics.beginPath();
-          // Lip top
-          graphics.moveTo(-15, -45);
-          graphics.lineTo(15, -45);
-          graphics.moveTo(-11, -45);
-          // sides and bottom curve
-          graphics.lineTo(-11, 28);
-          graphics.arc(0, 28, 11, Math.PI, 0, true);
-          graphics.lineTo(11, -45);
-          graphics.strokePath();
-
-          // Cork stopper
-          graphics.fillStyle(0xa16207, 1); // wooden brown
-          graphics.beginPath();
-          graphics.moveTo(-9, -54);
-          graphics.lineTo(9, -54);
-          graphics.lineTo(11, -45);
-          graphics.lineTo(-11, -45);
-          graphics.closePath();
-          graphics.fillPath();
-
-          // Highlight reflect
-          graphics.lineStyle(2, 0xffffff, 0.4);
-          graphics.lineBetween(-7, -35, -7, 20);
-        };
-
-        scene.drawTestTubeGraphic(tubeGraphics, tubeInfo.hex);
-
-        // Add Label Text below the tube
-        const label = scene.add.text(0, 68, tubeInfo.label, {
-          fontFamily: 'Courier, Monaco, monospace',
-          fontSize: '12px',
-          fontStyle: 'bold',
-          color: '#cbd5e1'
-        }).setOrigin(0.5);
-        tubeContainer.add(label);
-
-        // Setup interaction
-        tubeContainer.setSize(34, 115);
-        tubeContainer.setInteractive({ draggable: true });
-        
-        // Store configurations
-        tubeContainer.setData('colorKey', tubeInfo.colorKey);
-        tubeContainer.setData('hex', tubeInfo.hex);
-        tubeContainer.setData('startX', tx);
-        tubeContainer.setData('startY', ty);
-
-        scene.tubes.push(tubeContainer);
-      });
+        // 5. Draw Primary Test Tubes at the Top (Horizontal shelf)
+        scene.tubes = [];
+        const startX = 200;
+        const shelfY = 85;
+        const tubeSpacing = 120;
+ 
+        // Draw a simple horizontal Ghibli wooden shelf bar
+        const shelfBar = scene.add.graphics();
+        shelfBar.fillStyle(0x78350f, 0.95); // wood brown
+        shelfBar.lineStyle(2, 0x451a03, 0.8);
+        shelfBar.fillRoundedRect(startX - 50, shelfY + 45, 340, 10, 4);
+        shelfBar.strokeRoundedRect(startX - 50, shelfY + 45, 340, 10, 4);
+ 
+        const colorsData = [
+          { colorKey: 'Rojo', hex: scene.colors.Rojo.hex, label: '🍓 FRESA' },
+          { colorKey: 'Azul', hex: scene.colors.Azul.hex, label: '🫐 ARÁNDANO' },
+          { colorKey: 'Amarillo', hex: scene.colors.Amarillo.hex, label: '🌻 GIRASOL' }
+        ];
+ 
+        colorsData.forEach((tubeInfo, index) => {
+          const tx = startX + index * tubeSpacing;
+          const ty = shelfY;
+   
+          const tubeContainer = scene.add.container(tx, ty);
+          const tubeGraphics = scene.add.graphics();
+          tubeContainer.add(tubeGraphics);
+   
+          // Draw tube graphics (static contents, filled 70%)
+          scene.drawTestTubeGraphic = function (graphics, colorHex) {
+            graphics.clear();
+   
+            // Liquid
+            graphics.fillStyle(colorHex, 0.85);
+            graphics.beginPath();
+            const liqY = -15; // 70% fill line
+            graphics.moveTo(-11, liqY);
+            graphics.lineTo(11, liqY);
+            graphics.lineTo(11, 28);
+            // bottom curve
+            graphics.arc(0, 28, 11, 0, Math.PI, false);
+            graphics.lineTo(-11, 28);
+            graphics.closePath();
+            graphics.fillPath();
+   
+            // Glass outline
+            graphics.lineStyle(3, 0xffffff, 0.65);
+            graphics.beginPath();
+            // Lip top
+            graphics.moveTo(-15, -45);
+            graphics.lineTo(15, -45);
+            graphics.moveTo(-11, -45);
+            // sides and bottom curve
+            graphics.lineTo(-11, 28);
+            graphics.arc(0, 28, 11, Math.PI, 0, true);
+            graphics.lineTo(11, -45);
+            graphics.strokePath();
+   
+            // Cork stopper
+            graphics.fillStyle(0xa16207, 1); // wooden brown
+            graphics.beginPath();
+            graphics.moveTo(-9, -54);
+            graphics.lineTo(9, -54);
+            graphics.lineTo(11, -45);
+            graphics.lineTo(-11, -45);
+            graphics.closePath();
+            graphics.fillPath();
+   
+            // Highlight reflect
+            graphics.lineStyle(2, 0xffffff, 0.4);
+            graphics.lineBetween(-7, -35, -7, 20);
+          };
+   
+          scene.drawTestTubeGraphic(tubeGraphics, tubeInfo.hex);
+   
+          // Add Label Text below the tube
+          const label = scene.add.text(0, 68, tubeInfo.label, {
+            fontFamily: "'Fredoka', sans-serif",
+            fontSize: '11px',
+            fontStyle: 'bold',
+            color: '#78350f'
+          }).setOrigin(0.5);
+          tubeContainer.add(label);
+   
+          // Setup interaction
+          tubeContainer.setSize(34, 115);
+          tubeContainer.setInteractive({ draggable: true });
+          
+          // Store configurations
+          tubeContainer.setData('colorKey', tubeInfo.colorKey);
+          tubeContainer.setData('hex', tubeInfo.hex);
+          tubeContainer.setData('startX', tx);
+          tubeContainer.setData('startY', ty);
+   
+          scene.tubes.push(tubeContainer);
+        });
 
       // 6. Target Flasks on the Right (Violeta, Verde, Anaranjado)
       scene.targets = {};
@@ -595,9 +712,9 @@ export default function ColorGame({ onGameComplete }) {
       const targetSpacing = 165;
 
       const targetsData = [
-        { name: 'Violeta', hex: scene.colors.Violeta.hex, label: 'VIOLETA (Rojo + Azul)' },
-        { name: 'Verde', hex: scene.colors.Verde.hex, label: 'VERDE (Azul + Amarillo)' },
-        { name: 'Anaranjado', hex: scene.colors.Anaranjado.hex, label: 'ANARANJADO (Rojo + Amarillo)' }
+        { name: 'Violeta', hex: scene.colors.Violeta.hex, label: 'POCIÓN VIOLETA 🪻' },
+        { name: 'Verde', hex: scene.colors.Verde.hex, label: 'POCIÓN VERDE 🍃' },
+        { name: 'Anaranjado', hex: scene.colors.Anaranjado.hex, label: 'POCIÓN NARANJA 🍊' }
       ];
 
       targetsData.forEach((tgtInfo, index) => {
@@ -609,21 +726,14 @@ export default function ColorGame({ onGameComplete }) {
         targetContainer.add(outlineGraphics);
         targetContainer.add(solvedGraphics);
 
-        // Labels
-        const titleText = scene.add.text(0, -62, tgtInfo.name.toUpperCase(), {
-          fontFamily: 'Courier, Monaco, monospace',
-          fontSize: '13px',
+        // Labels (Clean Fredoka text displaying the target flask name without recipes)
+        const titleText = scene.add.text(0, -62, tgtInfo.label, {
+          fontFamily: "'Fredoka', sans-serif",
+          fontSize: '12px',
           fontStyle: 'bold',
-          color: tgtInfo.hex
+          color: '#78350f'
         }).setOrigin(0.5);
         targetContainer.add(titleText);
-
-        const subText = scene.add.text(0, 60, tgtInfo.label, {
-          fontFamily: 'Courier, Monaco, monospace',
-          fontSize: '10px',
-          color: '#64748b'
-        }).setOrigin(0.5);
-        targetContainer.add(subText);
 
         // Star badge (hidden initially, pops up on solved)
         const starText = scene.add.text(42, -30, '⭐', {
@@ -677,40 +787,40 @@ export default function ColorGame({ onGameComplete }) {
       });
 
       // 7. Manual Empty Button (Trash Bin / Drain)
-      // Placed below the scientist
-      const dumpButtonContainer = scene.add.container(220, 525);
+      // Placed below the mixing flask
+      const dumpButtonContainer = scene.add.container(350, 525);
       const dbGraphics = scene.add.graphics();
-      dbGraphics.fillStyle(0xef4444, 0.15);
-      dbGraphics.lineStyle(2, 0xef4444, 0.6);
-      dbGraphics.fillRoundedRect(-50, -15, 100, 30, 6);
-      dbGraphics.strokeRoundedRect(-50, -15, 100, 30, 6);
+      dbGraphics.fillStyle(0x22c55e, 0.15); // soft leaf green
+      dbGraphics.lineStyle(2, 0x15803d, 0.6);
+      dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
+      dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
       dumpButtonContainer.add(dbGraphics);
 
-      const dbText = scene.add.text(0, 0, '⚠️ VACIAR', {
-        fontFamily: 'Courier, Monaco, monospace',
+      const dbText = scene.add.text(0, 0, '🧪 LIMPIAR MATRAZ', {
+        fontFamily: "'Fredoka', sans-serif",
         fontSize: '11px',
         fontStyle: 'bold',
-        color: '#f87171'
+        color: '#15803d'
       }).setOrigin(0.5);
       dumpButtonContainer.add(dbText);
 
-      dumpButtonContainer.setSize(100, 30);
+      dumpButtonContainer.setSize(120, 30);
       dumpButtonContainer.setInteractive({ useHandCursor: true });
       
       dumpButtonContainer.on('pointerover', () => {
         dbGraphics.clear();
-        dbGraphics.fillStyle(0xef4444, 0.3);
-        dbGraphics.lineStyle(2, 0xef4444, 0.9);
-        dbGraphics.fillRoundedRect(-50, -15, 100, 30, 6);
-        dbGraphics.strokeRoundedRect(-50, -15, 100, 30, 6);
+        dbGraphics.fillStyle(0x22c55e, 0.3);
+        dbGraphics.lineStyle(2, 0x15803d, 0.9);
+        dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
+        dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
       });
 
       dumpButtonContainer.on('pointerout', () => {
         dbGraphics.clear();
-        dbGraphics.fillStyle(0xef4444, 0.15);
-        dbGraphics.lineStyle(2, 0xef4444, 0.6);
-        dbGraphics.fillRoundedRect(-50, -15, 100, 30, 6);
-        dbGraphics.strokeRoundedRect(-50, -15, 100, 30, 6);
+        dbGraphics.fillStyle(0x22c55e, 0.15);
+        dbGraphics.lineStyle(2, 0x15803d, 0.6);
+        dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
+        dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
       });
 
       dumpButtonContainer.on('pointerdown', () => {
@@ -782,8 +892,8 @@ export default function ColorGame({ onGameComplete }) {
               // Target already completed, return back
               scene.tweens.add({
                 targets: gameObject,
-                x: 220,
-                y: 440,
+                x: 350,
+                y: 415,
                 duration: 400,
                 ease: 'Back.easeOut'
               });
@@ -847,8 +957,8 @@ export default function ColorGame({ onGameComplete }) {
               // Return flask and clean it
               scene.tweens.add({
                 targets: gameObject,
-                x: 220,
-                y: 440,
+                x: 350,
+                y: 415,
                 duration: 400,
                 ease: 'Power1',
                 onComplete: () => {
@@ -914,8 +1024,8 @@ export default function ColorGame({ onGameComplete }) {
               // Return flask and clean it
               scene.tweens.add({
                 targets: gameObject,
-                x: 220,
-                y: 440,
+                x: 350,
+                y: 415,
                 duration: 400,
                 ease: 'Power1',
                 onComplete: () => {
@@ -928,8 +1038,8 @@ export default function ColorGame({ onGameComplete }) {
             // Not dropped on targets, return home safely
             scene.tweens.add({
               targets: gameObject,
-              x: 220,
-              y: 440,
+              x: 350,
+              y: 415,
               duration: 350,
               ease: 'Back.easeOut'
             });
@@ -1011,6 +1121,9 @@ export default function ColorGame({ onGameComplete }) {
                 let targetLevel = scene.currentLiquidLevel + 0.45;
                 if (targetLevel > 0.95) targetLevel = 0.95;
 
+                // Process mix chemistry logic immediately so color updates before tween bobs
+                scene.processMixingChemistry(colorKey, colorHex);
+
                 scene.tweens.add({
                   targets: scene,
                   currentLiquidLevel: targetLevel,
@@ -1025,9 +1138,6 @@ export default function ColorGame({ onGameComplete }) {
                     } else if (pourEmitter.destroy) {
                       pourEmitter.destroy();
                     }
-
-                    // Process mix chemistry logic
-                    scene.processMixingChemistry(colorKey, colorHex);
 
                     // Return tube home
                     scene.tweens.add({
@@ -1049,15 +1159,25 @@ export default function ColorGame({ onGameComplete }) {
         });
       };
 
-      // Chemical Color Mixing Equations
+      // Magic Color Mixing Equations
       scene.processMixingChemistry = function (newColorKey, newColorHex) {
         scene.mixedIngredients.push(newColorKey);
+
+        const mapName = (k) => {
+          if (k === 'Rojo') return 'Fresa 🍓';
+          if (k === 'Azul') return 'Arándano 🫐';
+          if (k === 'Amarillo') return 'Girasol 🌻';
+          if (k === 'Violeta') return 'Poción Violeta 🪻';
+          if (k === 'Verde') return 'Poción Verde 🍃';
+          if (k === 'Anaranjado') return 'Poción Naranja 🍊';
+          return k;
+        };
 
         if (scene.mixedIngredients.length === 1) {
           // First ingredient added
           scene.currentColorHex = newColorHex;
           scene.currentColorName = newColorKey;
-          scene.mixingLabelText.setText(newColorKey.toUpperCase());
+          scene.mixingLabelText.setText(mapName(newColorKey).toUpperCase());
         } else if (scene.mixedIngredients.length === 2) {
           // Second ingredient added
           const i1 = scene.mixedIngredients[0];
@@ -1083,7 +1203,7 @@ export default function ColorGame({ onGameComplete }) {
 
           scene.currentColorHex = mixHex;
           scene.currentColorName = mixName;
-          scene.mixingLabelText.setText(`MEZCLA: ${mixName.toUpperCase()}`);
+          scene.mixingLabelText.setText(`POCIÓN: ${mapName(mixName).toUpperCase()}`);
           
           if (mixName !== i1) {
             scene.setScientistState('happy');
@@ -1092,7 +1212,7 @@ export default function ColorGame({ onGameComplete }) {
           // 3 or more colors = mud/sludge
           scene.currentColorHex = scene.colors.Sludge.hex;
           scene.currentColorName = 'Sludge';
-          scene.mixingLabelText.setText('MEZCLA: LODO INESTABLE');
+          scene.mixingLabelText.setText('MEZCLA: POCIÓN INESTABLE ☁️');
           scene.setScientistState('confused');
         }
 
@@ -1103,14 +1223,14 @@ export default function ColorGame({ onGameComplete }) {
       scene.emptyMixingFlask = function (showSplash) {
         if (showSplash) {
           scene.game.events.emit('trigger-pour-sfx');
-
+ 
           // Tilt flask to pour contents
           scene.mixingFlaskContainer.disableInteractive();
           scene.tweens.add({
             targets: scene.mixingFlaskContainer,
             angle: 110,
-            x: 240,
-            y: 460,
+            x: 370,
+            y: 435,
             duration: 350,
             ease: 'Power1',
             onComplete: () => {
@@ -1124,7 +1244,7 @@ export default function ColorGame({ onGameComplete }) {
                 frequency: 25,
                 tint: scene.currentColorHex
               });
-
+ 
               // Emptying tween
               scene.tweens.add({
                 targets: scene,
@@ -1139,13 +1259,13 @@ export default function ColorGame({ onGameComplete }) {
                   } else if (drainEmitter.destroy) {
                     drainEmitter.destroy();
                   }
-
+ 
                   // Restore flask posture
                   scene.tweens.add({
                     targets: scene.mixingFlaskContainer,
                     angle: 0,
-                    x: 220,
-                    y: 440,
+                    x: 350,
+                    y: 415,
                     duration: 300,
                     ease: 'Power1',
                     onComplete: () => {
@@ -1160,13 +1280,13 @@ export default function ColorGame({ onGameComplete }) {
           scene.resetChemicalVariables();
         }
       };
-
+ 
       scene.resetChemicalVariables = function () {
         scene.mixedIngredients = [];
         scene.currentColorHex = 0xffffff;
         scene.currentColorName = '';
         scene.currentLiquidLevel = 0;
-        scene.mixingLabelText.setText('MATRAZ VACÍO');
+        scene.mixingLabelText.setText('MATRAZ VACÍO 🧪');
         scene.drawMixingFlask();
       };
 
@@ -1201,7 +1321,7 @@ export default function ColorGame({ onGameComplete }) {
     function update() {
       // Bob mixing flask Container in sync with scientist bobbing when not dragged
       if (!this.isFlaskDragging && this.scientistContainer && this.mixingFlaskContainer) {
-        this.mixingFlaskContainer.y = this.scientistContainer.y + 50;
+        this.mixingFlaskContainer.y = this.scientistContainer.y + 25;
       }
     }
 
@@ -1326,7 +1446,7 @@ export default function ColorGame({ onGameComplete }) {
 
   return (
     <div className="lab-container">
-      {/* 1. Unauthorized Credentials Entry Portal */}
+      {/* 1. Unauthorized Entry Portal */}
       {!isAuthorized && (
         <div className="credentials-overlay">
           <div className="terminal-card">
@@ -1334,52 +1454,42 @@ export default function ColorGame({ onGameComplete }) {
               <span className="dot red"></span>
               <span className="dot yellow"></span>
               <span className="dot green"></span>
-              <span className="terminal-title">THRUMAFORGE CREDENTIALS GATEWAY</span>
+              <span className="terminal-title">ENTRADA AL LABORATORIO MÁGICO</span>
             </div>
             
             <form className="terminal-body" onSubmit={handleAuthorize}>
-              <div className="hologram-seal">
-                <svg viewBox="0 0 100 100" width="80" height="80" className="flask-logo">
-                  <path d="M40 20 h20 v10 h-20 z" fill="#c084fc" opacity="0.8" />
-                  <path d="M47 30 h6 v15 h-6 z" fill="#c084fc" opacity="0.6" />
-                  <path d="M30 75 L45 45 h10 L70 75 Z" fill="none" stroke="#a855f7" strokeWidth="4" />
-                  <path d="M34 70 L48 48 h4 L66 70 Z" fill="#aa3bff" opacity="0.3" />
-                  <circle cx="50" cy="62" r="5" fill="#3b82f6" className="bubble-anim" />
-                  <circle cx="43" cy="55" r="3" fill="#10b981" />
-                </svg>
-              </div>
 
-              <h2 className="panel-heading">AUTORIZACIÓN DE ACCESO</h2>
-              <p className="panel-desc">Ingresa tus datos para ingresar al Laboratorio de Química de Colores.</p>
-
+              <h2 className="panel-heading">¡HOLA, PEQUEÑO CIENTÍFICO! 🧪</h2>
+              <p className="panel-desc">Escribe tu nombre para empezar a experimentar en el lab del bosque.</p>
+ 
               <div className="input-group">
-                <label htmlFor="student-name">IDENTIFICACIÓN DEL CIENTÍFICO:</label>
+                <label htmlFor="student-name">¿CÓMO TE LLAMAS?:</label>
                 <input
                   type="text"
                   id="student-name"
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="Ej. Dra. Marie Curie"
+                  placeholder="Escribe tu lindo nombre aquí..."
                   maxLength={25}
                   required
                   className="cyber-input"
                 />
               </div>
-
+ 
               <div className="input-group">
-                <label htmlFor="lab-rank">RANGO PROFESIONAL:</label>
+                <label htmlFor="lab-rank">ELIGE TU TÍTULO MÁGICO:</label>
                 <select
                   id="lab-rank"
                   value={labRank}
                   onChange={(e) => setLabRank(e.target.value)}
                   className="cyber-select"
                 >
-                  <option value="Apprentice">⚙️ Alquimista Aprendiz</option>
-                  <option value="Researcher">🔬 Investigador de Colores</option>
-                  <option value="MadScientist">⚡ Científico Loco del Cobre</option>
+                  <option value="Apprentice">🌱 Ayudante de Lab (Aprendiz)</option>
+                  <option value="Researcher">🔬 Científico del Bosque (Experto)</option>
+                  <option value="MadScientist">🌳 Gran Sabio del Lab (Maestro)</option>
                 </select>
               </div>
-
+ 
               <div className="safety-checkbox">
                 <input
                   type="checkbox"
@@ -1389,33 +1499,33 @@ export default function ColorGame({ onGameComplete }) {
                   required
                 />
                 <label htmlFor="safety-lock">
-                  Acepto las Normas de Bioseguridad: No beber los reactivos, limpiar los tubos y no alimentar al científico bobo.
+                  ¡Prometo cuidar el material de vidrio, no beber las pociones y divertirme haciendo experimentos! 🧪
                 </label>
               </div>
-
+ 
               <button type="submit" className="cyber-btn primary-glow" disabled={!studentName.trim() || !safetyApproved}>
-                INICIAR SISTEMA DE MEZCLA
+                ¡INICIAR EXPERIMENTOS! 🌟
               </button>
             </form>
           </div>
         </div>
       )}
-
-      {/* 2. Main Scientific HUD & Active Lab Board */}
+ 
+      {/* 2. Main HUD & Active Board */}
       {isAuthorized && (
         <div className="lab-workspace">
-          {/* Top Cybernetic Status Indicator Panel */}
+          {/* Top Panel */}
           <header className="workspace-header">
             <div className="hud-metric client-name">
-              <span className="label">CIENTÍFICO:</span>
+              <span className="label">CIENTÍFICO(A):</span>
               <span className="value text-glow">{studentName.toUpperCase()}</span>
-              <span className="badge">{labRank === 'Apprentice' ? 'APRENDIZ' : labRank === 'Researcher' ? 'INVESTIGADOR' : 'MAD SCIENTIST'}</span>
+              <span className="badge">{labRank === 'Apprentice' ? 'AYUDANTE 🌱' : labRank === 'Researcher' ? 'CIENTÍFICO 🔬' : 'GRAN SABIO 🌳'}</span>
             </div>
-
+ 
             <div className="hud-metric stats-box">
               <div className="stat-node">
-                <span className="label">EXPERIENCIA:</span>
-                <span className="value text-gold">{score} EXP</span>
+                <span className="label">CIENCIA:</span>
+                <span className="value text-gold">{score} CIENCIA ✨</span>
               </div>
               <div className="stat-separator"></div>
               <div className="stat-node">
@@ -1424,7 +1534,7 @@ export default function ColorGame({ onGameComplete }) {
               </div>
               <div className="stat-separator"></div>
               <div className="stat-node">
-                <span className="label">EFICACIA:</span>
+                <span className="label">PRECISIÓN:</span>
                 <span className="value text-cyan">
                   {attempts > 0 ? Math.round((successes / attempts) * 100) : 100}%
                 </span>
@@ -1437,79 +1547,61 @@ export default function ColorGame({ onGameComplete }) {
                 </span>
               </div>
             </div>
-
+ 
             <div className="hud-actions">
               <button 
                 onClick={toggleMusic} 
                 className={`icon-btn ${isMusicOn ? 'active-green' : 'inactive-red'}`} 
                 title="Música de Fondo"
               >
-                {isMusicOn ? '🔊 MÚSICA' : '🔇 MÚSICA'}
+                {isMusicOn ? '🎵 MÚSICA SÍ' : '🔇 MÚSICA NO'}
               </button>
               <button 
                 onClick={toggleSound} 
                 className={`icon-btn ${!isMuted ? 'active-green' : 'inactive-red'}`} 
                 title="Sonido SFX"
               >
-                {!isMuted ? '🔊 EFECTOS' : '🔇 EFECTOS'}
+                {!isMuted ? '✨ EFECTOS SÍ' : '🔇 EFECTOS NO'}
               </button>
               <button onClick={handleRestart} className="icon-btn danger" title="Reiniciar Partida">
-                🔄 REINICIAR
+                🔄 REINICIAR LAB
               </button>
             </div>
           </header>
-
-          {/* Center Play Area Grid */}
+ 
+          {/* Center Play Area */}
           <div className="workspace-body">
-            {/* Left Hand Reference Board */}
+            {/* Left Recipe Sidebar */}
             <aside className="recipe-sidebar">
-              <div className="sidebar-section">
-                <h3 className="section-title">🧬 FÓRMULAS QUÍMICAS</h3>
-                <ul className="recipe-list">
-                  <li>
-                    <span className="beaker red">🔴</span> + <span className="beaker blue">🔵</span> = <span className="beaker purple">🟣 Violeta</span>
-                  </li>
-                  <li>
-                    <span className="beaker blue">🔵</span> + <span className="beaker yellow">🟡</span> = <span className="beaker green">🟢 Verde</span>
-                  </li>
-                  <li>
-                    <span className="beaker red">🔴</span> + <span className="beaker yellow">🟡</span> = <span className="beaker orange">🟠 Anaranjado</span>
-                  </li>
-                  <li className="warning-note">
-                    ⚠️ Agregar 3 o más componentes produce <span className="beaker gray">🛢️ Lodo Inestable</span>.
-                  </li>
-                </ul>
+              <div className="sidebar-section instructions">
+                <h3 className="section-title">💡 ¿CÓMO EXPERIMENTAR?</h3>
+                <ol className="inst-list">
+                  <li>Arrastra las pociones primarias (Fresa, Arándano, Girasol) al matraz del científico.</li>
+                  <li>Mezcla los colores para crear las pociones de la receta.</li>
+                  <li>Arrastra el matraz mezclado hacia su silueta correspondiente en la derecha.</li>
+                  <li>Si te equivocas o creas una mezcla inestable, haz clic en <strong>🧪 LIMPIAR MATRAZ</strong> para vaciarlo.</li>
+                </ol>
               </div>
-
+ 
               <div className="sidebar-section">
-                <h3 className="section-title">🎯 OBJETIVOS DE HOY</h3>
+                <h3 className="section-title">🎯 EXPERIMENTOS DE HOY</h3>
                 <div className="checklist">
                   <div className={`check-node ${targets.Violeta ? 'solved' : 'pending'}`}>
-                    <span className="check-box">{targets.Violeta ? '✅' : '🔬'}</span>
-                    <span className="check-label">Matraz Violeta</span>
+                    <span className="check-box">{targets.Violeta ? '✅' : '🧪'}</span>
+                    <span className="check-label">Poción Violeta 🪻</span>
                   </div>
                   <div className={`check-node ${targets.Verde ? 'solved' : 'pending'}`}>
-                    <span className="check-box">{targets.Verde ? '✅' : '🔬'}</span>
-                    <span className="check-label">Matraz Verde</span>
+                    <span className="check-box">{targets.Verde ? '✅' : '🧪'}</span>
+                    <span className="check-label">Poción Verde 🍃</span>
                   </div>
                   <div className={`check-node ${targets.Anaranjado ? 'solved' : 'pending'}`}>
-                    <span className="check-box">{targets.Anaranjado ? '✅' : '🔬'}</span>
-                    <span className="check-label">Matraz Anaranjado</span>
+                    <span className="check-box">{targets.Anaranjado ? '✅' : '🧪'}</span>
+                    <span className="check-label">Poción Naranja 🍊</span>
                   </div>
                 </div>
               </div>
-
-              <div className="sidebar-section instructions">
-                <h3 className="section-title">💡 ¿CÓMO JUGAR?</h3>
-                <ol className="inst-list">
-                  <li>Arrastra los tubos de color primario a la boca del matraz del científico loco.</li>
-                  <li>Mezcla los colores hasta obtener un matraz secundario correcto.</li>
-                  <li>Arrastra el matraz mezclado hacia su silueta correspondiente en la derecha.</li>
-                  <li>Si fallas o creas lodo, haz clic en <strong>VACIAR</strong> para limpiar el matraz.</li>
-                </ol>
-              </div>
             </aside>
-
+ 
             {/* Core Game Render Canvas */}
             <main className="canvas-wrapper">
               <div ref={gameRef} className="phaser-canvas-container" id="phaser-canvas-container" />
@@ -1518,44 +1610,44 @@ export default function ColorGame({ onGameComplete }) {
           </div>
         </div>
       )}
-
+ 
       {/* 3. Victory Report Modal Card */}
       {completed && (
         <div className="victory-overlay">
           <div className="diploma-card">
-            <div className="badge-ribbon">⭐</div>
-            <h1 className="diploma-title">INFORME CIENTÍFICO APROBADO</h1>
+            <div className="badge-ribbon">🏆</div>
+            <h1 className="diploma-title">¡DIPLOMA DE PEQUEÑO CIENTÍFICO!</h1>
             <p className="diploma-desc">
-              Por cuanto el alumno(a) ha completado satisfactoriamente los experimentos químicos de refracción cromática en los laboratorios de Thrumaforge.
+              ¡Felicidades! Has completado con éxito todos los experimentos del laboratorio del bosque mágico y aprendido sobre la mezcla de colores.
             </p>
-
+ 
             <div className="diploma-details">
               <div className="detail-row">
-                <span className="lbl">INVESTIGADOR PRINCIPAL:</span>
+                <span className="lbl">CIENTÍFICO(A) PRINCIPAL:</span>
                 <span className="val text-glow">{studentName}</span>
               </div>
               <div className="detail-row">
-                <span className="lbl">RANGO ACADÉMICO:</span>
+                <span className="lbl">RANGO CIENTÍFICO:</span>
                 <span className="val">
-                  {labRank === 'Apprentice' ? '⚙️ Alquimista Aprendiz' : labRank === 'Researcher' ? '🔬 Investigador de Colores' : '⚡ Científico Loco'}
+                  {labRank === 'Apprentice' ? '🌱 Ayudante de Lab' : labRank === 'Researcher' ? '🔬 Científico(a) del Bosque' : '🌳 Gran Sabio del Lab'}
                 </span>
               </div>
               <div className="detail-row">
-                <span className="lbl">PUNTUACIÓN DE EFICIENCIA:</span>
-                <span className="val text-gold">{score} PUNTOS EXP</span>
+                <span className="lbl">CIENCIA ACUMULADA:</span>
+                <span className="val text-gold">{score} CIENCIA ✨</span>
               </div>
               <div className="detail-row">
-                <span className="lbl">TOTAL DE MEZCLAS:</span>
+                <span className="lbl">EXPERIMENTOS REALIZADOS:</span>
                 <span className="val">{attempts} INTENTOS</span>
               </div>
               <div className="detail-row">
-                <span className="lbl">PRECISIÓN DE COMBINACIÓN:</span>
+                <span className="lbl">PRECISIÓN DE MEZCLA:</span>
                 <span className="val text-cyan">
                   {attempts > 0 ? Math.round((successes / attempts) * 100) : 100}%
                 </span>
               </div>
               <div className="detail-row">
-                <span className="lbl">TIEMPO CIENTÍFICO:</span>
+                <span className="lbl">TIEMPO DE EXPERIMENTOS:</span>
                 <span className="val">
                   {Math.floor(timeElapsed / 60)}m {(timeElapsed % 60)}s
                 </span>
@@ -1565,10 +1657,10 @@ export default function ColorGame({ onGameComplete }) {
                 <span className="val">{new Date().toLocaleDateString()}</span>
               </div>
             </div>
-
+ 
             <div className="diploma-actions">
               <button onClick={handleRestart} className="cyber-btn primary-glow">
-                VOLVER A COMPROBAR MEZCLAS (NUEVO INTENTO)
+                🧪 ¡HACER NUEVOS EXPERIMENTOS!
               </button>
             </div>
           </div>

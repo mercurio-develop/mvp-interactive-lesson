@@ -1,34 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ColorGame from './ColorGame';
+import { resultsService } from './resultsService';
+import TeacherDashboard from './TeacherDashboard';
 import './App.css';
 
 function App() {
   const [sessionLedger, setSessionLedger] = useState([]);
+  const [showTeacherDashboard, setShowTeacherDashboard] = useState(false);
 
-  // React Callback Hook triggered by Phaser on completion
-  const handleGameComplete = (sessionData) => {
+  // Load results on mount
+  const refreshLedger = async () => {
+    const data = await resultsService.getResults();
+    setSessionLedger(data);
+  };
+
+  useEffect(() => {
+    refreshLedger();
+  }, []);
+
+  // Hook triggered on game completion
+  const handleGameComplete = async (sessionData) => {
     console.log('React received game session data:', sessionData);
-    // Append to our history ledger
-    setSessionLedger((prev) => [sessionData, ...prev]);
+    await resultsService.saveResult(sessionData);
+    await refreshLedger();
   };
 
   return (
     <div className="app-root-container">
-      {/* Visual background grid and scanline filters */}
-      <div className="scanline-overlay"></div>
-      <div className="grid-overlay"></div>
+      {/* Drifting Clouds for Ghibli aesthetic */}
+      <div className="cloud cloud-1">☁️</div>
+      <div className="cloud cloud-2">☁️</div>
+      <div className="cloud cloud-3">☁️</div>
 
+      {/* Main header bar styled as a cozy lab board */}
       <header className="app-main-header">
         <div className="title-logo">
           <div className="flask-glow-icon">🧪</div>
           <div>
-            <h1>THRUMAFORGE</h1>
-            <p className="subtitle">Mesa de Química Interactiva y Espectro Cromático</p>
+            <h1>EL LABORATORIO DEL BOSQUE</h1>
+            <p className="subtitle">¡Experimentos mágicos de colores! 🍃</p>
           </div>
         </div>
         <div className="header-status">
+          <button className="teacher-panel-trigger-btn" onClick={() => setShowTeacherDashboard(true)}>
+            🔬 Panel del Profesor
+          </button>
           <span className="pulse-indicator"></span>
-          <span className="status-label">SENSORES EN LÍNEA</span>
+          <span className="status-label">🧪 LABORATORIO ACTIVO</span>
         </div>
       </header>
 
@@ -36,25 +54,32 @@ function App() {
         <ColorGame onGameComplete={handleGameComplete} />
       </main>
 
+      {showTeacherDashboard && (
+        <TeacherDashboard onClose={() => {
+          setShowTeacherDashboard(false);
+          refreshLedger();
+        }} />
+      )}
+
       {/* Lab History Ledger Dashboard */}
       {sessionLedger.length > 0 && (
         <section className="ledger-section">
           <div className="ledger-card">
-            <h2 className="ledger-title">📋 HISTORIAL DE INFORMES QUÍMICOS</h2>
+            <h2 className="ledger-title">🔬 REGISTRO DE PEQUEÑOS CIENTÍFICOS</h2>
             <p className="ledger-subtitle">
-              Sesiones de mezcla reportadas al servidor central de Thrumaforge.
+              Experimentos de mezcla completados en el laboratorio del bosque.
             </p>
             <div className="ledger-table-container">
               <table className="ledger-table">
                 <thead>
                   <tr>
-                    <th>Estudiante</th>
-                    <th>Rango</th>
-                    <th>Puntaje</th>
+                    <th>Científico(a)</th>
+                    <th>Rango Científico</th>
+                    <th>Ciencia ✨</th>
                     <th>Intentos</th>
-                    <th>Tiempo</th>
+                    <th>Tiempo en el Lab</th>
                     <th>Fecha / Hora</th>
-                    <th>Estado de Envío</th>
+                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -62,9 +87,9 @@ function App() {
                     <tr key={index} className="ledger-row">
                       <td className="text-glow">{session.studentName}</td>
                       <td>
-                        {session.labRank === 'Apprentice' ? 'Aprendiz' : session.labRank === 'Researcher' ? 'Investigador' : 'Científico Loco'}
+                        {session.labRank === 'Apprentice' ? 'Ayudante de Lab 🌱' : session.labRank === 'Researcher' ? 'Científico(a) del Bosque 🌸' : 'Gran Sabio del Lab 🌳'}
                       </td>
-                      <td className="text-gold font-bold">{session.score} EXP</td>
+                      <td className="text-gold font-bold">{session.score} CIENCIA</td>
                       <td>{session.attempts}</td>
                       <td>
                         {Math.floor(session.timeSeconds / 60)}m {session.timeSeconds % 60}s
@@ -73,7 +98,7 @@ function App() {
                         {new Date(session.timestamp).toLocaleTimeString()} - {new Date(session.timestamp).toLocaleDateString()}
                       </td>
                       <td>
-                        <span className="badge-sent">⚡ ENVIADO OK</span>
+                        <span className="badge-sent">🌟 COMPLETADO</span>
                       </td>
                     </tr>
                   ))}
@@ -85,8 +110,8 @@ function App() {
       )}
 
       <footer className="app-main-footer">
-        <p>© 2026 - Gremio de Elfos Silvanos del Thrumaforge. Todos los derechos reservados.</p>
-        <p className="footer-small">Consola de Control de Seguridad del Laboratorio de Química Reactiva.</p>
+        <p>© 2026 - El Laboratorio del Bosque. Hecho con amor para niñas y niños de 5 a 6 años. 🧪</p>
+        <p className="footer-small">🧪 ¡Divertidos experimentos de colores en el laboratorio del bosque mágico!</p>
       </footer>
     </div>
   );

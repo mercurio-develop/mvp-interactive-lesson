@@ -16,6 +16,7 @@ export default function ColorGame({ onGameComplete }) {
   const [activeGoal, setActiveGoal] = useState(EXPERIMENTS[0].id);
   const [isPouring, setIsPouring] = useState(false);
   const [gameSessionId, setGameSessionId] = useState(0);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   const gameRef = useRef(null);
   const phaserGame = useRef(null);
@@ -1459,15 +1460,36 @@ export default function ColorGame({ onGameComplete }) {
     setIsAuthorized(true);
   };
 
-  const handleRestart = () => {
+  const finishAndReturnToStart = () => {
     activeGameSessionRef.current += 1;
     setCompleted(false);
     setAllPassed(false);
     setExperimentStatus({ ...INITIAL_EXPERIMENT_STATUS });
     setActiveGoal(EXPERIMENTS[0].id);
     setIsPouring(false);
+    setStudentName('');
+    setRedirectCountdown(5);
+    setIsAuthorized(false);
     setGameSessionId((id) => id + 1);
   };
+
+  useEffect(() => {
+    if (!completed) return;
+
+    setRedirectCountdown(5);
+    const countdownInterval = setInterval(() => {
+      setRedirectCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+
+    const redirectTimer = setTimeout(() => {
+      finishAndReturnToStart();
+    }, 5000);
+
+    return () => {
+      clearInterval(countdownInterval);
+      clearTimeout(redirectTimer);
+    };
+  }, [completed]);
 
   return (
     <div className="lab-container">
@@ -1479,7 +1501,6 @@ export default function ColorGame({ onGameComplete }) {
               <span className="dot red"></span>
               <span className="dot yellow"></span>
               <span className="dot green"></span>
-              <span className="terminal-title">PRUEBA DE COLORES</span>
             </div>
             
             <form className="terminal-body" onSubmit={handleAuthorize}>
@@ -1535,9 +1556,6 @@ export default function ColorGame({ onGameComplete }) {
                 title="Sonido"
               >
                 {!isMuted ? '🔊' : '🔇'}
-              </button>
-              <button onClick={handleRestart} className="icon-btn danger" title="Reiniciar">
-                🔄
               </button>
             </div>
           </header>
@@ -1601,12 +1619,18 @@ export default function ColorGame({ onGameComplete }) {
       {completed && (
         <div className="victory-overlay">
           <div className="diploma-card">
-            <div className="badge-ribbon">{allPassed ? '🏆' : '📋'}</div>
+            <div className="badge-ribbon">{allPassed ? '🏆' : '💪'}</div>
             <h1 className="diploma-title">
-              {allPassed ? '¡Prueba aprobada!' : 'Prueba terminada'}
+              {allPassed ? '¡Prueba aprobada!' : '¡Buen intento!'}
             </h1>
             <p className="diploma-desc">
-              {studentName}: {passedCount} de {EXPERIMENTS.length} pociones correctas.
+              {allPassed
+                ? `¡Muy bien, ${studentName}! Mezclaste todos los colores correctamente.`
+                : `${studentName}, sigue practicando la mezcla de colores con tu maestra.`}
+            </p>
+
+            <p className="diploma-score">
+              Resultado: <strong>{passedCount} de {EXPERIMENTS.length}</strong> pociones correctas
             </p>
 
             <ul className="result-list">
@@ -1623,11 +1647,9 @@ export default function ColorGame({ onGameComplete }) {
               })}
             </ul>
 
-            <div className="diploma-actions">
-              <button onClick={handleRestart} className="cyber-btn primary-glow">
-                Intentar de nuevo
-              </button>
-            </div>
+            <p className="redirect-notice">
+              Volviendo al inicio en {redirectCountdown}s…
+            </p>
           </div>
         </div>
       )}

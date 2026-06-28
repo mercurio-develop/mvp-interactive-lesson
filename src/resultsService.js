@@ -64,11 +64,11 @@ export const resultsService = {
           .insert([
             {
               student_name: newRecord.studentName,
-              lab_rank: newRecord.labRank,
-              score: newRecord.score,
-              attempts: newRecord.attempts,
-              successes: newRecord.successes,
-              time_seconds: newRecord.timeSeconds,
+              lab_rank: newRecord.labRank || null,
+              score: newRecord.score ?? newRecord.successes ?? 0,
+              attempts: newRecord.attempts ?? newRecord.totalExperiments ?? 3,
+              successes: newRecord.successes ?? 0,
+              time_seconds: newRecord.timeSeconds ?? 0,
               created_at: newRecord.timestamp
             }
           ]);
@@ -110,6 +110,8 @@ export const resultsService = {
           score: row.score,
           attempts: row.attempts,
           successes: row.successes,
+          totalExperiments: 3,
+          allPassed: row.successes === 3,
           timeSeconds: row.time_seconds,
           timestamp: row.created_at
         }));

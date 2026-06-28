@@ -1,33 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { audioService } from './audioService';
+import { EXPERIMENTS, INITIAL_EXPERIMENT_STATUS, EXPERIMENT_STATUS, isExperimentLocked, getNextPendingExperiment, allExperimentsAttempted, allExperimentsPassed, countPassed, countPending } from './experiments';
 
 export default function ColorGame({ onGameComplete }) {
-  // Screen and Authentication State
   const [studentName, setStudentName] = useState('');
-  const [labRank, setLabRank] = useState('Apprentice');
-  const [safetyApproved, setSafetyApproved] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  
-  // Gameplay Metrics (Synchronized from Phaser)
-  const [score, setScore] = useState(0);
-  const [attempts, setAttempts] = useState(0);
-  const [successes, setSuccesses] = useState(0);
   const [completed, setCompleted] = useState(false);
-  const [timeElapsed, setTimeElapsed] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isMusicOn, setIsMusicOn] = useState(false);
-  
-  // Mission Target Completion Checklist (Synchronized from Phaser)
-  const [targets, setTargets] = useState({
-    Violeta: false,
-    Verde: false,
-    Anaranjado: false,
-  });
+
+  const [experimentStatus, setExperimentStatus] = useState({ ...INITIAL_EXPERIMENT_STATUS });
+  const [allPassed, setAllPassed] = useState(false);
+
+  const [activeGoal, setActiveGoal] = useState(EXPERIMENTS[0].id);
+  const [isPouring, setIsPouring] = useState(false);
 
   const gameRef = useRef(null);
   const phaserGame = useRef(null);
-  const timerInterval = useRef(null);
+
+  const passedCount = countPassed(experimentStatus);
 
   // Sound Controls
   const toggleSound = () => {
@@ -42,18 +34,6 @@ export default function ColorGame({ onGameComplete }) {
     audioService.toggleMusic(nextMusic);
   };
 
-  // Timer Effect
-  useEffect(() => {
-    if (isAuthorized && !completed) {
-      timerInterval.current = setInterval(() => {
-        setTimeElapsed((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (timerInterval.current) clearInterval(timerInterval.current);
-    };
-  }, [isAuthorized, completed]);
-
   // Phaser Initialization Effect
   useEffect(() => {
     if (!isAuthorized || !gameRef.current) return;
@@ -65,10 +45,14 @@ export default function ColorGame({ onGameComplete }) {
 
     const config = {
       type: Phaser.AUTO,
-      width: 1000,
-      height: 580,
       parent: gameRef.current,
       transparent: true,
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 1000,
+        height: 580
+      },
       physics: {
         default: 'arcade',
         arcade: {
@@ -89,15 +73,18 @@ export default function ColorGame({ onGameComplete }) {
 
     // Pass data registry parameters
     game.registry.set('studentName', studentName);
-    game.registry.set('labRank', labRank);
+    game.registry.set('activeGoal', activeGoal);
 
-    // Phaser -> React Event Subscriptions
     game.events.on('stats-updated', (data) => {
-      setScore(data.score);
-      setAttempts(data.attempts);
-      setSuccesses(data.successes);
-      setTargets(data.targets);
+      setExperimentStatus(data.experimentStatus);
     });
+
+    game.events.on('update-active-goal-react', (newGoal) => {
+      setActiveGoal(newGoal);
+    });
+
+    game.events.on('pour-started', () => setIsPouring(true));
+    game.events.on('pour-finished', () => setIsPouring(false));
 
     game.events.on('trigger-pour-sfx', () => {
       audioService.playPour();
@@ -114,16 +101,15 @@ export default function ColorGame({ onGameComplete }) {
 
     game.events.on('game-finished', (data) => {
       setCompleted(true);
-      if (timerInterval.current) clearInterval(timerInterval.current);
-      
+      setAllPassed(data.allPassed);
+
       if (onGameComplete) {
         onGameComplete({
           studentName,
-          labRank,
-          score: data.score,
-          attempts: data.attempts,
           successes: data.successes,
-          timeSeconds: timeElapsed,
+          totalExperiments: EXPERIMENTS.length,
+          allPassed: data.allPassed,
+          experimentStatus: data.experimentStatus,
           timestamp: new Date().toISOString()
         });
       }
@@ -137,6 +123,17 @@ export default function ColorGame({ onGameComplete }) {
 
     function create() {
       const scene = this;
+ 
+      scene.activeGoal = scene.registry.get('activeGoal') || 'Violeta';
+      scene.game.events.on('active-goal-changed', (newGoal) => {
+        scene.activeGoal = newGoal;
+        if (scene.updateScientistSpeech) {
+          scene.updateScientistSpeech();
+        }
+        if (scene.updateActiveTargetDisplay) {
+          scene.updateActiveTargetDisplay();
+        }
+      });
 
       // 1. Generate Sparkle Texture for Success
       const sparkleCanvas = scene.textures.createCanvas('sparkle', 10, 10);
@@ -161,31 +158,21 @@ export default function ColorGame({ onGameComplete }) {
       smokeCanvas.refresh();
 
       // Setup State Variables
-      scene.score = 0;
-      scene.attempts = 0;
-      scene.successes = 0;
-      scene.mixedIngredients = []; // Array of string colors
+      scene.mixedIngredients = [];
       scene.currentColorHex = 0xffffff;
-      scene.currentLiquidLevel = 0; // 0 to 1
-      scene.isFlaskDragging = false;
-
-      // Target Completion Flags
-      scene.targetCompletion = {
-        Violeta: false,
-        Verde: false,
-        Anaranjado: false
-      };
+      scene.currentLiquidLevel = 0;
+      scene.experimentStatus = { ...INITIAL_EXPERIMENT_STATUS };
 
       // Define Color Map
       scene.colors = {
         Rojo: { hex: 0xff4766, name: 'Rojo' },
         Azul: { hex: 0x3388ff, name: 'Azul' },
         Amarillo: { hex: 0xffd200, name: 'Amarillo' },
-        Violeta: { hex: 0xa855f7, name: 'Violeta' },
-        Verde: { hex: 0x10b981, name: 'Verde' },
-        Anaranjado: { hex: 0xf97316, name: 'Anaranjado' },
         Sludge: { hex: 0x5a6372, name: 'Lodo Gris (Inestable)' }
       };
+      EXPERIMENTS.forEach((exp) => {
+        scene.colors[exp.id] = { hex: exp.hex, name: exp.id };
+      });
 
       // Add Ambient Floating Bubbles in Background
       scene.ambientBubbles = createSafeParticles(scene, 0, 0, 'sparkle', {
@@ -210,8 +197,8 @@ export default function ColorGame({ onGameComplete }) {
       scene.speechContainer = scene.add.container(0, -90);
       scene.speechBubble = scene.add.graphics();
       scene.speechText = scene.add.text(0, -2, '', {
-        fontFamily: 'Courier, Monaco, monospace',
-        fontSize: '13px',
+        fontFamily: "'Fredoka', sans-serif",
+        fontSize: '15px',
         fontStyle: 'bold',
         color: '#1e293b',
         align: 'center'
@@ -525,6 +512,35 @@ export default function ColorGame({ onGameComplete }) {
         }
       };
 
+      scene.updateScientistSpeech = function () {
+        const exp = EXPERIMENTS.find((e) => e.id === scene.activeGoal) || EXPERIMENTS[0];
+        const msg = `¡Hagamos la ${exp.label}! ${exp.emoji}`;
+
+        scene.speechText.setText(msg.toUpperCase());
+        scene.speechBubble.clear();
+        
+        const w = scene.speechText.width + 24;
+        const h = 32;
+        
+        scene.speechBubble.fillStyle(0xffffff, 0.95);
+        scene.speechBubble.lineStyle(2, 0x78350f, 1);
+        scene.speechBubble.fillRoundedRect(-w/2, -h/2, w, h, 8);
+        scene.speechBubble.strokeRoundedRect(-w/2, -h/2, w, h, 8);
+        
+        scene.speechBubble.beginPath();
+        scene.speechBubble.moveTo(-6, h/2);
+        scene.speechBubble.lineTo(6, h/2);
+        scene.speechBubble.lineTo(0, h/2 + 7);
+        scene.speechBubble.closePath();
+        scene.speechBubble.fillPath();
+        scene.speechBubble.strokePath();
+
+        scene.speechContainer.alpha = 1;
+        scene.speechContainer.y = -90;
+
+        if (scene.speechTween) scene.speechTween.remove();
+      };
+
       // 4. Mixing Flask (El Mezclador)
       // Placed to the right of the scientist. Y synced in update()
       scene.mixingFlaskContainer = scene.add.container(350, 415);
@@ -534,19 +550,23 @@ export default function ColorGame({ onGameComplete }) {
       // Label above mixing flask
       scene.mixingLabelText = scene.add.text(0, -68, 'MATRAZ VACÍO 🧪', {
         fontFamily: "'Fredoka', sans-serif",
-        fontSize: '13px',
+        fontSize: '18px',
         fontStyle: 'bold',
         color: '#78350f',
+        stroke: '#ffffff',
+        strokeThickness: 3,
         align: 'center'
       }).setOrigin(0.5);
       scene.mixingFlaskContainer.add(scene.mixingLabelText);
  
-      // Drag instruction hint
-      scene.dragHintText = scene.add.text(0, 68, '¡Arrastra al objetivo! 🧪', {
+      // Mixing hint (matraz-only flow)
+      scene.dragHintText = scene.add.text(0, 68, '¡Mezcla 2 colores! 🧪', {
         fontFamily: "'Fredoka', sans-serif",
-        fontSize: '12px',
+        fontSize: '16px',
         fontStyle: 'bold',
         color: '#d97706',
+        stroke: '#ffffff',
+        strokeThickness: 3,
         align: 'center'
       }).setOrigin(0.5);
       scene.dragHintText.alpha = 0;
@@ -573,7 +593,7 @@ export default function ColorGame({ onGameComplete }) {
         }
 
         // 3. Draw outer glass container contour
-        graphics.lineStyle(3, 0xffffff, 0.7);
+        graphics.lineStyle(3.5, 0xffffff, 0.95);
         drawFlaskSilhouette(graphics, 0, 0, 80, 100);
 
         // 4. Graduation ticks (laboratory markings)
@@ -596,14 +616,9 @@ export default function ColorGame({ onGameComplete }) {
         graphics.strokePath();
 
         // Update interaction state
-        if (level > 0) {
-          scene.mixingFlaskContainer.setSize(85, 115);
-          scene.mixingFlaskContainer.setInteractive({ draggable: true });
-          scene.dragHintText.alpha = 1;
-        } else {
-          scene.mixingFlaskContainer.disableInteractive();
-          scene.dragHintText.alpha = 0;
-        }
+        // Non-draggable beaker (evaluated automatically)
+        scene.mixingFlaskContainer.disableInteractive();
+        scene.dragHintText.alpha = 0;
       };
 
       // Initialize mixing flask drawing
@@ -623,9 +638,9 @@ export default function ColorGame({ onGameComplete }) {
         shelfBar.strokeRoundedRect(startX - 50, shelfY + 45, 340, 10, 4);
  
         const colorsData = [
-          { colorKey: 'Rojo', hex: scene.colors.Rojo.hex, label: '🍓 FRESA' },
-          { colorKey: 'Azul', hex: scene.colors.Azul.hex, label: '🫐 ARÁNDANO' },
-          { colorKey: 'Amarillo', hex: scene.colors.Amarillo.hex, label: '🌻 GIRASOL' }
+          { colorKey: 'Rojo', hex: scene.colors.Rojo.hex, label: '🍓 ROJO' },
+          { colorKey: 'Azul', hex: scene.colors.Azul.hex, label: '🫐 AZUL' },
+          { colorKey: 'Amarillo', hex: scene.colors.Amarillo.hex, label: '🌻 AMARILLO' }
         ];
  
         colorsData.forEach((tubeInfo, index) => {
@@ -654,7 +669,7 @@ export default function ColorGame({ onGameComplete }) {
             graphics.fillPath();
    
             // Glass outline
-            graphics.lineStyle(3, 0xffffff, 0.65);
+            graphics.lineStyle(3.5, 0xffffff, 0.95);
             graphics.beginPath();
             // Lip top
             graphics.moveTo(-15, -45);
@@ -686,9 +701,11 @@ export default function ColorGame({ onGameComplete }) {
           // Add Label Text below the tube
           const label = scene.add.text(0, 68, tubeInfo.label, {
             fontFamily: "'Fredoka', sans-serif",
-            fontSize: '11px',
+            fontSize: '16px',
             fontStyle: 'bold',
-            color: '#78350f'
+            color: '#78350f',
+            stroke: '#ffffff',
+            strokeThickness: 3
           }).setOrigin(0.5);
           tubeContainer.add(label);
    
@@ -711,11 +728,11 @@ export default function ColorGame({ onGameComplete }) {
       const targetColumnYStart = 120;
       const targetSpacing = 165;
 
-      const targetsData = [
-        { name: 'Violeta', hex: scene.colors.Violeta.hex, label: 'POCIÓN VIOLETA 🪻' },
-        { name: 'Verde', hex: scene.colors.Verde.hex, label: 'POCIÓN VERDE 🍃' },
-        { name: 'Anaranjado', hex: scene.colors.Anaranjado.hex, label: 'POCIÓN NARANJA 🍊' }
-      ];
+      const targetsData = EXPERIMENTS.map((exp) => ({
+        name: exp.id,
+        hex: exp.hex,
+        label: `${exp.label.toUpperCase()} ${exp.emoji}`
+      }));
 
       targetsData.forEach((tgtInfo, index) => {
         const ty = targetColumnYStart + index * targetSpacing;
@@ -729,9 +746,11 @@ export default function ColorGame({ onGameComplete }) {
         // Labels (Clean Fredoka text displaying the target flask name without recipes)
         const titleText = scene.add.text(0, -62, tgtInfo.label, {
           fontFamily: "'Fredoka', sans-serif",
-          fontSize: '12px',
+          fontSize: '16px',
           fontStyle: 'bold',
-          color: '#78350f'
+          color: '#78350f',
+          stroke: '#ffffff',
+          strokeThickness: 3
         }).setOrigin(0.5);
         targetContainer.add(titleText);
 
@@ -746,11 +765,11 @@ export default function ColorGame({ onGameComplete }) {
         scene.drawTargetOutline = function (graphics, colorHex) {
           graphics.clear();
           // Draw faint silhouette of target color
-          graphics.fillStyle(colorHex, 0.08);
+          graphics.fillStyle(colorHex, 0.2);
           drawLiquidFill(graphics, 0, 0, 70, 90, 0.8);
 
           // Draw dashed / faint outline
-          graphics.lineStyle(2.5, colorHex, 0.45);
+          graphics.lineStyle(3.5, colorHex, 0.9);
           drawFlaskSilhouette(graphics, 0, 0, 70, 90);
         };
 
@@ -762,7 +781,7 @@ export default function ColorGame({ onGameComplete }) {
             drawLiquidFill(graphics, 0, 0, 70, 90, 0.85);
 
             // Draw clean white glass outline
-            graphics.lineStyle(3, 0xffffff, 0.7);
+            graphics.lineStyle(3.5, 0xffffff, 0.95);
             drawFlaskSilhouette(graphics, 0, 0, 70, 90);
 
             // Draw light gloss highlight
@@ -782,9 +801,179 @@ export default function ColorGame({ onGameComplete }) {
           solvedGraphics,
           starText,
           hex: tgtInfo.hex,
-          name: tgtInfo.name
+          name: tgtInfo.name,
+          homeY: ty
         };
       });
+
+      scene.targetColumnX = targetColumnX;
+      scene.activeTargetY = 280;
+
+      scene.updateActiveTargetDisplay = function () {
+        Object.keys(scene.targets).forEach((key) => {
+          const tgt = scene.targets[key];
+          const isActive = key === scene.activeGoal;
+          tgt.container.setVisible(isActive);
+          if (isActive) {
+            tgt.container.setPosition(scene.targetColumnX, scene.activeTargetY);
+            const status = scene.experimentStatus[key];
+            const isPassed = status === EXPERIMENT_STATUS.PASSED;
+            if (isPassed) {
+              tgt.solvedGraphics.clear();
+              scene.drawTargetSolved(tgt.solvedGraphics, tgt.hex, true);
+              tgt.starText.alpha = 1;
+              tgt.starText.setScale(1.2);
+            } else {
+              scene.drawTargetOutline(tgt.outlineGraphics, tgt.hex);
+              tgt.solvedGraphics.clear();
+              tgt.starText.alpha = 0;
+            }
+          }
+        });
+      };
+
+      scene.selectNextPendingExperiment = function () {
+        const next = getNextPendingExperiment(scene.experimentStatus);
+        if (!next) return;
+
+        const onlyOneLeft = countPending(scene.experimentStatus) === 1;
+        const currentLocked = scene.experimentStatus[scene.activeGoal] !== EXPERIMENT_STATUS.PENDING;
+
+        if (onlyOneLeft || currentLocked) {
+          scene.activeGoal = next.id;
+          scene.game.events.emit('update-active-goal-react', next.id);
+          scene.updateActiveTargetDisplay();
+          scene.updateScientistSpeech();
+        }
+      };
+
+      scene.handleExperimentSuccess = function (activeTarget) {
+        scene.experimentStatus[activeTarget.name] = EXPERIMENT_STATUS.PASSED;
+
+        activeTarget.solvedGraphics.clear();
+        scene.drawTargetSolved(activeTarget.solvedGraphics, activeTarget.hex, true);
+        activeTarget.starText.scale = 0;
+        activeTarget.starText.alpha = 1;
+
+        scene.tweens.add({
+          targets: activeTarget.starText,
+          scale: 1.2,
+          duration: 400,
+          ease: 'Back.easeOut'
+        });
+
+        scene.game.events.emit('trigger-success-sfx');
+
+        const okText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '¡CORRECTO! ✅', {
+          fontFamily: "'Fredoka', sans-serif",
+          fontSize: '18px',
+          fontStyle: 'bold',
+          color: '#16a34a',
+          stroke: '#ffffff',
+          strokeThickness: 3
+        }).setOrigin(0.5);
+
+        scene.tweens.add({
+          targets: okText,
+          y: activeTarget.container.y - 110,
+          alpha: 0,
+          duration: 1200,
+          onComplete: () => okText.destroy()
+        });
+
+        const sparkleEmitter = createSafeParticles(scene, activeTarget.container.x, activeTarget.container.y, 'sparkle', {
+          speed: { min: 80, max: 200 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 1.5, end: 0 },
+          lifespan: 1000,
+          gravityY: 120,
+          quantity: 35,
+          frequency: -1,
+          tint: activeTarget.hex
+        });
+        if (sparkleEmitter.explode) sparkleEmitter.explode();
+
+        scene.setScientistState('happy');
+        scene.syncStats();
+        scene.updateActiveTargetDisplay();
+
+        scene.time.delayedCall(600, () => {
+          scene.emptyMixingFlask(false);
+          scene.selectNextPendingExperiment();
+          scene.checkGameCompletion();
+        });
+      };
+
+      scene.handleExperimentFailure = function (activeTarget) {
+        scene.experimentStatus[activeTarget.name] = EXPERIMENT_STATUS.FAILED;
+
+        scene.game.events.emit('trigger-failure-sfx');
+        scene.cameras.main.shake(250, 0.008);
+
+        const flaskHomeX = 350;
+        scene.tweens.add({
+          targets: scene.mixingFlaskContainer,
+          x: flaskHomeX - 8,
+          duration: 60,
+          yoyo: true,
+          repeat: 3,
+          onComplete: () => {
+            scene.mixingFlaskContainer.x = flaskHomeX;
+          }
+        });
+
+        const failText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, 'FALLIDO ❌', {
+          fontFamily: "'Fredoka', sans-serif",
+          fontSize: '18px',
+          fontStyle: 'bold',
+          color: '#f43f5e',
+          stroke: '#ffffff',
+          strokeThickness: 3
+        }).setOrigin(0.5);
+
+        scene.tweens.add({
+          targets: failText,
+          y: activeTarget.container.y - 110,
+          alpha: 0,
+          duration: 1200,
+          onComplete: () => failText.destroy()
+        });
+
+        const smokeEmitter = createSafeParticles(scene, scene.mixingFlaskContainer.x, scene.mixingFlaskContainer.y, 'smoke', {
+          speed: { min: 40, max: 120 },
+          angle: { min: 0, max: 360 },
+          scale: { start: 0.6, end: 2.2 },
+          alpha: { start: 0.7, end: 0 },
+          lifespan: 1100,
+          quantity: 25,
+          frequency: -1,
+          tint: 0x475569
+        });
+        if (smokeEmitter.explode) smokeEmitter.explode();
+
+        scene.setScientistState('shocked');
+        scene.syncStats();
+
+        scene.time.delayedCall(600, () => {
+          scene.emptyMixingFlask(false);
+          scene.selectNextPendingExperiment();
+          scene.checkGameCompletion();
+        });
+      };
+
+      scene.evaluateActiveExperiment = function (mixName) {
+        const activeTarget = scene.targets[scene.activeGoal];
+        if (!activeTarget || scene.experimentStatus[scene.activeGoal] !== EXPERIMENT_STATUS.PENDING) return;
+
+        if (mixName === scene.activeGoal) {
+          scene.handleExperimentSuccess(activeTarget);
+        } else {
+          scene.handleExperimentFailure(activeTarget);
+        }
+      };
+
+      scene.updateActiveTargetDisplay();
+      scene.updateScientistSpeech();
 
       // 7. Manual Empty Button (Trash Bin / Drain)
       // Placed below the mixing flask
@@ -792,35 +981,37 @@ export default function ColorGame({ onGameComplete }) {
       const dbGraphics = scene.add.graphics();
       dbGraphics.fillStyle(0x22c55e, 0.15); // soft leaf green
       dbGraphics.lineStyle(2, 0x15803d, 0.6);
-      dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
-      dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
+      dbGraphics.fillRoundedRect(-80, -16, 160, 32, 8);
+      dbGraphics.strokeRoundedRect(-80, -16, 160, 32, 8);
       dumpButtonContainer.add(dbGraphics);
 
       const dbText = scene.add.text(0, 0, '🧪 LIMPIAR MATRAZ', {
         fontFamily: "'Fredoka', sans-serif",
-        fontSize: '11px',
+        fontSize: '13px',
         fontStyle: 'bold',
-        color: '#15803d'
+        color: '#15803d',
+        stroke: '#ffffff',
+        strokeThickness: 3
       }).setOrigin(0.5);
       dumpButtonContainer.add(dbText);
 
-      dumpButtonContainer.setSize(120, 30);
+      dumpButtonContainer.setSize(160, 32);
       dumpButtonContainer.setInteractive({ useHandCursor: true });
       
       dumpButtonContainer.on('pointerover', () => {
         dbGraphics.clear();
         dbGraphics.fillStyle(0x22c55e, 0.3);
         dbGraphics.lineStyle(2, 0x15803d, 0.9);
-        dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
-        dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
+        dbGraphics.fillRoundedRect(-80, -16, 160, 32, 8);
+        dbGraphics.strokeRoundedRect(-80, -16, 160, 32, 8);
       });
 
       dumpButtonContainer.on('pointerout', () => {
         dbGraphics.clear();
         dbGraphics.fillStyle(0x22c55e, 0.15);
         dbGraphics.lineStyle(2, 0x15803d, 0.6);
-        dbGraphics.fillRoundedRect(-60, -15, 120, 30, 8);
-        dbGraphics.strokeRoundedRect(-60, -15, 120, 30, 8);
+        dbGraphics.fillRoundedRect(-80, -16, 160, 32, 8);
+        dbGraphics.strokeRoundedRect(-80, -16, 160, 32, 8);
       });
 
       dumpButtonContainer.on('pointerdown', () => {
@@ -831,26 +1022,14 @@ export default function ColorGame({ onGameComplete }) {
 
       // Drag Tube Logic
       scene.input.on('dragstart', function (pointer, gameObject) {
-        if (gameObject === scene.mixingFlaskContainer) {
-          scene.isFlaskDragging = true;
-          scene.children.bringToTop(gameObject);
-          scene.tweens.add({
-            targets: gameObject,
-            scale: 1.08,
-            duration: 120,
-            ease: 'Power1'
-          });
-        } else {
-          // A primary test tube is being dragged
-          scene.children.bringToTop(gameObject);
-          scene.tweens.add({
-            targets: gameObject,
-            scale: 1.12,
-            angle: 10,
-            duration: 120,
-            ease: 'Power1'
-          });
-        }
+        scene.children.bringToTop(gameObject);
+        scene.tweens.add({
+          targets: gameObject,
+          scale: 1.12,
+          angle: 10,
+          duration: 120,
+          ease: 'Power1'
+        });
       });
 
       scene.input.on('drag', function (pointer, gameObject, dragX, dragY) {
@@ -859,229 +1038,42 @@ export default function ColorGame({ onGameComplete }) {
       });
 
       scene.input.on('dragend', function (pointer, gameObject) {
-        if (gameObject === scene.mixingFlaskContainer) {
-          scene.isFlaskDragging = false;
-          scene.tweens.add({
-            targets: gameObject,
-            scale: 1.0,
-            duration: 120,
-            ease: 'Power1'
-          });
+        const startX = gameObject.getData('startX');
+        const startY = gameObject.getData('startY');
 
-          // Check target collision
-          let matchFound = false;
-          let activeTarget = null;
+        scene.tweens.add({
+          targets: gameObject,
+          scale: 1.0,
+          angle: 0,
+          duration: 150,
+          ease: 'Power1'
+        });
 
-          for (const key in scene.targets) {
-            const tgt = scene.targets[key];
-            const dist = Phaser.Math.Distance.Between(gameObject.x, gameObject.y, tgt.container.x, tgt.container.y);
-            
-            if (dist < 90) {
-              matchFound = true;
-              activeTarget = tgt;
-              break;
-            }
-          }
+        const dist = Phaser.Math.Distance.Between(
+          gameObject.x,
+          gameObject.y,
+          scene.mixingFlaskContainer.x,
+          scene.mixingFlaskContainer.y - 45
+        );
 
-          if (matchFound && activeTarget) {
-            // Evaluate Match Color
-            const isMatch = (scene.currentColorName === activeTarget.name);
-            const isAlreadySolved = scene.targetCompletion[activeTarget.name];
-
-            if (isAlreadySolved) {
-              // Target already completed, return back
-              scene.tweens.add({
-                targets: gameObject,
-                x: 350,
-                y: 415,
-                duration: 400,
-                ease: 'Back.easeOut'
-              });
-              scene.setScientistState('confused');
-            } else if (isMatch) {
-              // CORRECT MATCH SUCCESS
-              scene.targetCompletion[activeTarget.name] = true;
-              scene.attempts += 1;
-              scene.successes += 1;
-              scene.score += 100;
-
-              // Fill Target Flask
-              activeTarget.solvedGraphics.clear();
-              scene.drawTargetSolved(activeTarget.solvedGraphics, activeTarget.hex, true);
-              activeTarget.starText.scale = 0;
-              activeTarget.starText.alpha = 1;
-              
-              // Animate star badge pop
-              scene.tweens.add({
-                targets: activeTarget.starText,
-                scale: 1.2,
-                duration: 400,
-                ease: 'Back.easeOut'
-              });
-
-              // Play chimes SFX via React callback wrapper
-              scene.game.events.emit('trigger-success-sfx');
-
-              // Float arcade scoring indicator
-              const rewardText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '+100 EXP', {
-                fontFamily: 'Courier, Monaco, monospace',
-                fontSize: '18px',
-                fontStyle: 'bold',
-                color: '#eab308'
-              }).setOrigin(0.5);
-
-              scene.tweens.add({
-                targets: rewardText,
-                y: activeTarget.container.y - 110,
-                alpha: 0,
-                duration: 1200,
-                onComplete: () => rewardText.destroy()
-              });
-
-              // Sparkle particle burst (matching color)
-              const sparkleEmitter = createSafeParticles(scene, activeTarget.container.x, activeTarget.container.y, 'sparkle', {
-                speed: { min: 80, max: 200 },
-                angle: { min: 0, max: 360 },
-                scale: { start: 1.5, end: 0 },
-                lifespan: 1000,
-                gravityY: 120,
-                quantity: 35,
-                frequency: -1, // one-shot
-                tint: activeTarget.hex
-              });
-              if (sparkleEmitter.explode) sparkleEmitter.explode(); // trigger one-shot
-
-              // Reaction happy
-              scene.setScientistState('happy');
-
-              // Return flask and clean it
-              scene.tweens.add({
-                targets: gameObject,
-                x: 350,
-                y: 415,
-                duration: 400,
-                ease: 'Power1',
-                onComplete: () => {
-                  scene.emptyMixingFlask(false); // standard clean
-                  scene.syncStats();
-                  scene.checkGameCompletion();
-                }
-              });
-
-            } else {
-              // INCORRECT MATCH FAIL
-              scene.attempts += 1;
-              scene.score = Math.max(0, scene.score - 25);
-
-              // Play failure sound
-              scene.game.events.emit('trigger-failure-sfx');
-
-              // Shake Target & Camera
-              scene.cameras.main.shake(250, 0.008);
-              scene.tweens.add({
-                targets: activeTarget.container,
-                x: activeTarget.container.x - 8,
-                duration: 60,
-                yoyo: true,
-                repeat: 3,
-                onComplete: () => {
-                  activeTarget.container.x = targetColumnX;
-                }
-              });
-
-              // Red Error float score indicator
-              const failText = scene.add.text(activeTarget.container.x, activeTarget.container.y - 45, '-25 EXP', {
-                fontFamily: 'Courier, Monaco, monospace',
-                fontSize: '18px',
-                fontStyle: 'bold',
-                color: '#f43f5e'
-              }).setOrigin(0.5);
-
-              scene.tweens.add({
-                targets: failText,
-                y: activeTarget.container.y - 110,
-                alpha: 0,
-                duration: 1200,
-                onComplete: () => failText.destroy()
-              });
-
-              // Smoke puff explosion particles
-              const smokeEmitter = createSafeParticles(scene, activeTarget.container.x, activeTarget.container.y, 'smoke', {
-                speed: { min: 40, max: 120 },
-                angle: { min: 0, max: 360 },
-                scale: { start: 0.6, end: 2.2 },
-                alpha: { start: 0.7, end: 0 },
-                lifespan: 1100,
-                quantity: 25,
-                frequency: -1,
-                tint: 0x475569
-              });
-              if (smokeEmitter.explode) smokeEmitter.explode();
-
-              // Scientist shocked reaction
-              scene.setScientistState('shocked');
-
-              // Return flask and clean it
-              scene.tweens.add({
-                targets: gameObject,
-                x: 350,
-                y: 415,
-                duration: 400,
-                ease: 'Power1',
-                onComplete: () => {
-                  scene.emptyMixingFlask(false);
-                  scene.syncStats();
-                }
-              });
-            }
-          } else {
-            // Not dropped on targets, return home safely
-            scene.tweens.add({
-              targets: gameObject,
-              x: 350,
-              y: 415,
-              duration: 350,
-              ease: 'Back.easeOut'
-            });
-          }
+        if (dist < 100) {
+          scene.pourTube(gameObject, startX, startY);
         } else {
-          // Draggable tube drag end
-          const startX = gameObject.getData('startX');
-          const startY = gameObject.getData('startY');
-
-          // Reset tube rotation and scale
           scene.tweens.add({
             targets: gameObject,
-            scale: 1.0,
-            angle: 0,
-            duration: 150,
-            ease: 'Power1'
+            x: startX,
+            y: startY,
+            duration: 350,
+            ease: 'Back.easeOut'
           });
-
-          // Check if hovering near mixing flask mouth (X=220, Y=375 offset)
-          const dist = Phaser.Math.Distance.Between(gameObject.x, gameObject.y, scene.mixingFlaskContainer.x, scene.mixingFlaskContainer.y - 45);
-          
-          if (dist < 100 && !scene.isFlaskDragging) {
-            scene.pourTube(gameObject, startX, startY);
-          } else {
-            // Return back to the wooden shelf
-            scene.tweens.add({
-              targets: gameObject,
-              x: startX,
-              y: startY,
-              duration: 350,
-              ease: 'Back.easeOut'
-            });
-          }
         }
       });
 
       // Tube Pouring animation sequence
       scene.pourTube = function (tube, startX, startY) {
-        // disable interactivity on tube during animation
         tube.disableInteractive();
+        scene.game.events.emit('pour-started');
 
-        // Target pour coordinates (upper right of the flask mouth)
         const targetPourX = scene.mixingFlaskContainer.x + 55;
         const targetPourY = scene.mixingFlaskContainer.y - 85;
 
@@ -1121,8 +1113,7 @@ export default function ColorGame({ onGameComplete }) {
                 let targetLevel = scene.currentLiquidLevel + 0.45;
                 if (targetLevel > 0.95) targetLevel = 0.95;
 
-                // Process mix chemistry logic immediately so color updates before tween bobs
-                scene.processMixingChemistry(colorKey, colorHex);
+                const mixResult = scene.processMixingChemistry(colorKey, colorHex);
 
                 scene.tweens.add({
                   targets: scene,
@@ -1132,14 +1123,18 @@ export default function ColorGame({ onGameComplete }) {
                     scene.drawMixingFlask();
                   },
                   onComplete: () => {
-                    // Turn off pour particles
                     if (pourEmitter.stop) {
                       pourEmitter.stop();
                     } else if (pourEmitter.destroy) {
                       pourEmitter.destroy();
                     }
 
-                    // Return tube home
+                    if (mixResult?.shouldEvaluate) {
+                      scene.time.delayedCall(200, () => {
+                        scene.evaluateActiveExperiment(mixResult.mixName);
+                      });
+                    }
+
                     scene.tweens.add({
                       targets: tube,
                       angle: 0,
@@ -1149,6 +1144,7 @@ export default function ColorGame({ onGameComplete }) {
                       ease: 'Power1',
                       onComplete: () => {
                         tube.setInteractive();
+                        scene.game.events.emit('pour-finished');
                       }
                     });
                   }
@@ -1164,26 +1160,26 @@ export default function ColorGame({ onGameComplete }) {
         scene.mixedIngredients.push(newColorKey);
 
         const mapName = (k) => {
-          if (k === 'Rojo') return 'Fresa 🍓';
-          if (k === 'Azul') return 'Arándano 🫐';
-          if (k === 'Amarillo') return 'Girasol 🌻';
+          if (k === 'Rojo') return 'Rojo 🍓';
+          if (k === 'Azul') return 'Azul 🫐';
+          if (k === 'Amarillo') return 'Amarillo 🌻';
           if (k === 'Violeta') return 'Poción Violeta 🪻';
           if (k === 'Verde') return 'Poción Verde 🍃';
           if (k === 'Anaranjado') return 'Poción Naranja 🍊';
           return k;
         };
 
+        let shouldEvaluate = false;
+        let mixName = '';
+
         if (scene.mixedIngredients.length === 1) {
-          // First ingredient added
           scene.currentColorHex = newColorHex;
           scene.currentColorName = newColorKey;
           scene.mixingLabelText.setText(mapName(newColorKey).toUpperCase());
         } else if (scene.mixedIngredients.length === 2) {
-          // Second ingredient added
           const i1 = scene.mixedIngredients[0];
           const i2 = scene.mixedIngredients[1];
 
-          let mixName = '';
           let mixHex = 0x000000;
 
           if ((i1 === 'Rojo' && i2 === 'Azul') || (i1 === 'Azul' && i2 === 'Rojo')) {
@@ -1196,7 +1192,6 @@ export default function ColorGame({ onGameComplete }) {
             mixName = 'Anaranjado';
             mixHex = scene.colors.Anaranjado.hex;
           } else {
-            // Duplicate colors e.g. Rojo + Rojo
             mixName = i1;
             mixHex = scene.colors[i1].hex;
           }
@@ -1204,12 +1199,13 @@ export default function ColorGame({ onGameComplete }) {
           scene.currentColorHex = mixHex;
           scene.currentColorName = mixName;
           scene.mixingLabelText.setText(`POCIÓN: ${mapName(mixName).toUpperCase()}`);
-          
-          if (mixName !== i1) {
+
+          if (mixName !== i1 && mixName === scene.activeGoal) {
             scene.setScientistState('happy');
           }
+
+          shouldEvaluate = scene.experimentStatus[scene.activeGoal] === EXPERIMENT_STATUS.PENDING;
         } else {
-          // 3 or more colors = mud/sludge
           scene.currentColorHex = scene.colors.Sludge.hex;
           scene.currentColorName = 'Sludge';
           scene.mixingLabelText.setText('MEZCLA: POCIÓN INESTABLE ☁️');
@@ -1217,6 +1213,8 @@ export default function ColorGame({ onGameComplete }) {
         }
 
         scene.drawMixingFlask();
+
+        return shouldEvaluate ? { shouldEvaluate: true, mixName } : null;
       };
 
       // Empty Mixing Flask
@@ -1292,23 +1290,17 @@ export default function ColorGame({ onGameComplete }) {
 
       scene.syncStats = function () {
         scene.game.events.emit('stats-updated', {
-          score: scene.score,
-          attempts: scene.attempts,
-          successes: scene.successes,
-          targets: scene.targetCompletion
+          experimentStatus: scene.experimentStatus
         });
       };
 
       scene.checkGameCompletion = function () {
-        const { Violeta, Verde, Anaranjado } = scene.targetCompletion;
-        if (Violeta && Verde && Anaranjado) {
-          // Play fanfare chord
+        if (allExperimentsAttempted(scene.experimentStatus)) {
           scene.time.delayedCall(1200, () => {
-            // Trigger game finished
             scene.game.events.emit('game-finished', {
-              score: scene.score,
-              attempts: scene.attempts,
-              successes: scene.successes
+              successes: countPassed(scene.experimentStatus),
+              allPassed: allExperimentsPassed(scene.experimentStatus),
+              experimentStatus: { ...scene.experimentStatus }
             });
           });
         }
@@ -1319,8 +1311,7 @@ export default function ColorGame({ onGameComplete }) {
     }
 
     function update() {
-      // Bob mixing flask Container in sync with scientist bobbing when not dragged
-      if (!this.isFlaskDragging && this.scientistContainer && this.mixingFlaskContainer) {
+      if (this.scientistContainer && this.mixingFlaskContainer) {
         this.mixingFlaskContainer.y = this.scientistContainer.y + 25;
       }
     }
@@ -1420,24 +1411,39 @@ export default function ColorGame({ onGameComplete }) {
     };
   }, [isAuthorized]);
 
-  // Handle Login Credentials Submission
+  useEffect(() => {
+    if (!isAuthorized || completed) return;
+    const next = getNextPendingExperiment(experimentStatus);
+    if (!next) return;
+
+    const onlyOneLeft = countPending(experimentStatus) === 1;
+    const currentLocked = isExperimentLocked(experimentStatus[activeGoal]);
+
+    if (onlyOneLeft || currentLocked) {
+      setActiveGoal(next.id);
+    }
+  }, [experimentStatus, isAuthorized, completed, activeGoal]);
+
+  useEffect(() => {
+    if (phaserGame.current) {
+      phaserGame.current.registry.set('activeGoal', activeGoal);
+      phaserGame.current.events.emit('active-goal-changed', activeGoal);
+    }
+  }, [activeGoal]);
+
   const handleAuthorize = (e) => {
     e.preventDefault();
     if (!studentName.trim()) return;
-    if (!safetyApproved) return;
     setIsAuthorized(true);
   };
 
-  // Restart Experiment reset variables
   const handleRestart = () => {
-    setScore(0);
-    setAttempts(0);
-    setSuccesses(0);
-    setTimeElapsed(0);
     setCompleted(false);
-    setTargets({ Violeta: false, Verde: false, Anaranjado: false });
-    
-    // Refresh authorization triggers
+    setExperimentStatus({ ...INITIAL_EXPERIMENT_STATUS });
+    setAllPassed(false);
+    setActiveGoal(EXPERIMENTS[0].id);
+    setIsPouring(false);
+
     setIsAuthorized(false);
     setTimeout(() => {
       setIsAuthorized(true);
@@ -1454,57 +1460,29 @@ export default function ColorGame({ onGameComplete }) {
               <span className="dot red"></span>
               <span className="dot yellow"></span>
               <span className="dot green"></span>
-              <span className="terminal-title">ENTRADA AL LABORATORIO MÁGICO</span>
+              <span className="terminal-title">PRUEBA DE COLORES</span>
             </div>
             
             <form className="terminal-body" onSubmit={handleAuthorize}>
-
-              <h2 className="panel-heading">¡HOLA, PEQUEÑO CIENTÍFICO! 🧪</h2>
-              <p className="panel-desc">Escribe tu nombre para empezar a experimentar en el lab del bosque.</p>
+              <h2 className="panel-heading">Prueba de mezcla de colores 🧪</h2>
+              <p className="panel-desc">Escribe tu nombre para empezar.</p>
  
               <div className="input-group">
-                <label htmlFor="student-name">¿CÓMO TE LLAMAS?:</label>
+                <label htmlFor="student-name">Tu nombre:</label>
                 <input
                   type="text"
                   id="student-name"
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="Escribe tu lindo nombre aquí..."
+                  placeholder="Ej: María"
                   maxLength={25}
                   required
                   className="cyber-input"
                 />
               </div>
  
-              <div className="input-group">
-                <label htmlFor="lab-rank">ELIGE TU TÍTULO MÁGICO:</label>
-                <select
-                  id="lab-rank"
-                  value={labRank}
-                  onChange={(e) => setLabRank(e.target.value)}
-                  className="cyber-select"
-                >
-                  <option value="Apprentice">🌱 Ayudante de Lab (Aprendiz)</option>
-                  <option value="Researcher">🔬 Científico del Bosque (Experto)</option>
-                  <option value="MadScientist">🌳 Gran Sabio del Lab (Maestro)</option>
-                </select>
-              </div>
- 
-              <div className="safety-checkbox">
-                <input
-                  type="checkbox"
-                  id="safety-lock"
-                  checked={safetyApproved}
-                  onChange={(e) => setSafetyApproved(e.target.checked)}
-                  required
-                />
-                <label htmlFor="safety-lock">
-                  ¡Prometo cuidar el material de vidrio, no beber las pociones y divertirme haciendo experimentos! 🧪
-                </label>
-              </div>
- 
-              <button type="submit" className="cyber-btn primary-glow" disabled={!studentName.trim() || !safetyApproved}>
-                ¡INICIAR EXPERIMENTOS! 🌟
+              <button type="submit" className="cyber-btn primary-glow" disabled={!studentName.trim()}>
+                Empezar prueba
               </button>
             </form>
           </div>
@@ -1517,54 +1495,30 @@ export default function ColorGame({ onGameComplete }) {
           {/* Top Panel */}
           <header className="workspace-header">
             <div className="hud-metric client-name">
-              <span className="label">CIENTÍFICO(A):</span>
-              <span className="value text-glow">{studentName.toUpperCase()}</span>
-              <span className="badge">{labRank === 'Apprentice' ? 'AYUDANTE 🌱' : labRank === 'Researcher' ? 'CIENTÍFICO 🔬' : 'GRAN SABIO 🌳'}</span>
+              <span className="value text-glow">{studentName}</span>
             </div>
- 
-            <div className="hud-metric stats-box">
-              <div className="stat-node">
-                <span className="label">CIENCIA:</span>
-                <span className="value text-gold">{score} CIENCIA ✨</span>
-              </div>
-              <div className="stat-separator"></div>
-              <div className="stat-node">
-                <span className="label">INTENTOS:</span>
-                <span className="value">{attempts}</span>
-              </div>
-              <div className="stat-separator"></div>
-              <div className="stat-node">
-                <span className="label">PRECISIÓN:</span>
-                <span className="value text-cyan">
-                  {attempts > 0 ? Math.round((successes / attempts) * 100) : 100}%
-                </span>
-              </div>
-              <div className="stat-separator"></div>
-              <div className="stat-node">
-                <span className="label">TIEMPO:</span>
-                <span className="value">
-                  {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}
-                </span>
-              </div>
+
+            <div className="hud-metric stats-box simple-stats">
+              <span className="value">{passedCount} / {EXPERIMENTS.length} correctas</span>
             </div>
- 
+
             <div className="hud-actions">
-              <button 
-                onClick={toggleMusic} 
-                className={`icon-btn ${isMusicOn ? 'active-green' : 'inactive-red'}`} 
-                title="Música de Fondo"
+              <button
+                onClick={toggleMusic}
+                className={`icon-btn ${isMusicOn ? 'active-green' : 'inactive-red'}`}
+                title="Música"
               >
-                {isMusicOn ? '🎵 MÚSICA SÍ' : '🔇 MÚSICA NO'}
+                {isMusicOn ? '🎵' : '🔇'}
               </button>
-              <button 
-                onClick={toggleSound} 
-                className={`icon-btn ${!isMuted ? 'active-green' : 'inactive-red'}`} 
-                title="Sonido SFX"
+              <button
+                onClick={toggleSound}
+                className={`icon-btn ${!isMuted ? 'active-green' : 'inactive-red'}`}
+                title="Sonido"
               >
-                {!isMuted ? '✨ EFECTOS SÍ' : '🔇 EFECTOS NO'}
+                {!isMuted ? '🔊' : '🔇'}
               </button>
-              <button onClick={handleRestart} className="icon-btn danger" title="Reiniciar Partida">
-                🔄 REINICIAR LAB
+              <button onClick={handleRestart} className="icon-btn danger" title="Reiniciar">
+                🔄
               </button>
             </div>
           </header>
@@ -1574,30 +1528,43 @@ export default function ColorGame({ onGameComplete }) {
             {/* Left Recipe Sidebar */}
             <aside className="recipe-sidebar">
               <div className="sidebar-section instructions">
-                <h3 className="section-title">💡 ¿CÓMO EXPERIMENTAR?</h3>
+                <h3 className="section-title">Instrucciones</h3>
                 <ol className="inst-list">
-                  <li>Arrastra las pociones primarias (Fresa, Arándano, Girasol) al matraz del científico.</li>
-                  <li>Mezcla los colores para crear las pociones de la receta.</li>
-                  <li>Arrastra el matraz mezclado hacia su silueta correspondiente en la derecha.</li>
-                  <li>Si te equivocas o creas una mezcla inestable, haz clic en <strong>🧪 LIMPIAR MATRAZ</strong> para vaciarlo.</li>
+                  <li>Elige una poción abajo.</li>
+                  <li>Arrastra 2 colores al matraz.</li>
+                  <li>Solo tienes <strong>un intento</strong> por poción.</li>
                 </ol>
               </div>
  
               <div className="sidebar-section">
-                <h3 className="section-title">🎯 EXPERIMENTOS DE HOY</h3>
-                <div className="checklist">
-                  <div className={`check-node ${targets.Violeta ? 'solved' : 'pending'}`}>
-                    <span className="check-box">{targets.Violeta ? '✅' : '🧪'}</span>
-                    <span className="check-label">Poción Violeta 🪻</span>
-                  </div>
-                  <div className={`check-node ${targets.Verde ? 'solved' : 'pending'}`}>
-                    <span className="check-box">{targets.Verde ? '✅' : '🧪'}</span>
-                    <span className="check-label">Poción Verde 🍃</span>
-                  </div>
-                  <div className={`check-node ${targets.Anaranjado ? 'solved' : 'pending'}`}>
-                    <span className="check-box">{targets.Anaranjado ? '✅' : '🧪'}</span>
-                    <span className="check-label">Poción Naranja 🍊</span>
-                  </div>
+                <h3 className="section-title">Elige tu poción</h3>
+                <div className="active-experiment-selector">
+                  {EXPERIMENTS.map((exp) => {
+                    const status = experimentStatus[exp.id];
+                    const locked = isExperimentLocked(status);
+                    return (
+                    <button
+                      key={exp.id}
+                      className={`experiment-select-btn ${exp.cssClass} ${activeGoal === exp.id ? 'selected' : ''} ${status === EXPERIMENT_STATUS.PASSED ? 'solved' : ''} ${status === EXPERIMENT_STATUS.FAILED ? 'failed' : ''}`}
+                      onClick={() => setActiveGoal(exp.id)}
+                      disabled={locked || isPouring}
+                    >
+                      <span className="emoji">{exp.emoji}</span>
+                      <div className="details">
+                        <span className="name">{exp.label}</span>
+                        <span className="status">
+                          {status === EXPERIMENT_STATUS.PASSED
+                            ? '✅ Correcta'
+                            : status === EXPERIMENT_STATUS.FAILED
+                              ? '❌ Incorrecta'
+                              : activeGoal === exp.id
+                                ? 'Activa'
+                                : 'Elegir'}
+                        </span>
+                      </div>
+                    </button>
+                    );
+                  })}
                 </div>
               </div>
             </aside>
@@ -1615,52 +1582,31 @@ export default function ColorGame({ onGameComplete }) {
       {completed && (
         <div className="victory-overlay">
           <div className="diploma-card">
-            <div className="badge-ribbon">🏆</div>
-            <h1 className="diploma-title">¡DIPLOMA DE PEQUEÑO CIENTÍFICO!</h1>
+            <div className="badge-ribbon">{allPassed ? '🏆' : '📋'}</div>
+            <h1 className="diploma-title">
+              {allPassed ? '¡Prueba aprobada!' : 'Prueba terminada'}
+            </h1>
             <p className="diploma-desc">
-              ¡Felicidades! Has completado con éxito todos los experimentos del laboratorio del bosque mágico y aprendido sobre la mezcla de colores.
+              {studentName}: {passedCount} de {EXPERIMENTS.length} pociones correctas.
             </p>
- 
-            <div className="diploma-details">
-              <div className="detail-row">
-                <span className="lbl">CIENTÍFICO(A) PRINCIPAL:</span>
-                <span className="val text-glow">{studentName}</span>
-              </div>
-              <div className="detail-row">
-                <span className="lbl">RANGO CIENTÍFICO:</span>
-                <span className="val">
-                  {labRank === 'Apprentice' ? '🌱 Ayudante de Lab' : labRank === 'Researcher' ? '🔬 Científico(a) del Bosque' : '🌳 Gran Sabio del Lab'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="lbl">CIENCIA ACUMULADA:</span>
-                <span className="val text-gold">{score} CIENCIA ✨</span>
-              </div>
-              <div className="detail-row">
-                <span className="lbl">EXPERIMENTOS REALIZADOS:</span>
-                <span className="val">{attempts} INTENTOS</span>
-              </div>
-              <div className="detail-row">
-                <span className="lbl">PRECISIÓN DE MEZCLA:</span>
-                <span className="val text-cyan">
-                  {attempts > 0 ? Math.round((successes / attempts) * 100) : 100}%
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="lbl">TIEMPO DE EXPERIMENTOS:</span>
-                <span className="val">
-                  {Math.floor(timeElapsed / 60)}m {(timeElapsed % 60)}s
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="lbl">FECHA DE EMISIÓN:</span>
-                <span className="val">{new Date().toLocaleDateString()}</span>
-              </div>
-            </div>
- 
+
+            <ul className="result-list">
+              {EXPERIMENTS.map((exp) => {
+                const status = experimentStatus[exp.id];
+                return (
+                  <li key={exp.id} className={`result-item ${status}`}>
+                    <span>{exp.emoji} {exp.label}</span>
+                    <span>
+                      {status === EXPERIMENT_STATUS.PASSED ? '✅' : status === EXPERIMENT_STATUS.FAILED ? '❌' : '—'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+
             <div className="diploma-actions">
               <button onClick={handleRestart} className="cyber-btn primary-glow">
-                🧪 ¡HACER NUEVOS EXPERIMENTOS!
+                Intentar de nuevo
               </button>
             </div>
           </div>

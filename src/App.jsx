@@ -37,17 +37,13 @@ function App() {
         <div className="title-logo">
           <div className="flask-glow-icon">🧪</div>
           <div>
-            <h1>EL LABORATORIO DEL BOSQUE</h1>
-            <p className="subtitle">¡Experimentos mágicos de colores! 🍃</p>
+            <h1>EL LABORATORIO DE ARTE</h1>
+            <p className="subtitle">Prueba de mezcla de colores</p>
           </div>
         </div>
-        <div className="header-status">
           <button className="teacher-panel-trigger-btn" onClick={() => setShowTeacherDashboard(true)}>
             🔬 Panel del Profesor
           </button>
-          <span className="pulse-indicator"></span>
-          <span className="status-label">🧪 LABORATORIO ACTIVO</span>
-        </div>
       </header>
 
       <main className="app-main-content">
@@ -65,20 +61,17 @@ function App() {
       {sessionLedger.length > 0 && (
         <section className="ledger-section">
           <div className="ledger-card">
-            <h2 className="ledger-title">🔬 REGISTRO DE PEQUEÑOS CIENTÍFICOS</h2>
+            <h2 className="ledger-title">Resultados de la prueba</h2>
             <p className="ledger-subtitle">
-              Experimentos de mezcla completados en el laboratorio del bosque.
+              Últimas pruebas completadas en el laboratorio.
             </p>
             <div className="ledger-table-container">
               <table className="ledger-table">
                 <thead>
                   <tr>
-                    <th>Científico(a)</th>
-                    <th>Rango Científico</th>
-                    <th>Ciencia ✨</th>
-                    <th>Intentos</th>
-                    <th>Tiempo en el Lab</th>
-                    <th>Fecha / Hora</th>
+                    <th>Nombre</th>
+                    <th>Correctas</th>
+                    <th>Fecha</th>
                     <th>Estado</th>
                   </tr>
                 </thead>
@@ -86,19 +79,16 @@ function App() {
                   {sessionLedger.map((session, index) => (
                     <tr key={index} className="ledger-row">
                       <td className="text-glow">{session.studentName}</td>
-                      <td>
-                        {session.labRank === 'Apprentice' ? 'Ayudante de Lab 🌱' : session.labRank === 'Researcher' ? 'Científico(a) del Bosque 🌸' : 'Gran Sabio del Lab 🌳'}
-                      </td>
-                      <td className="text-gold font-bold">{session.score} CIENCIA</td>
-                      <td>{session.attempts}</td>
-                      <td>
-                        {Math.floor(session.timeSeconds / 60)}m {session.timeSeconds % 60}s
+                      <td className="font-bold">
+                        {session.successes ?? 0} / {session.totalExperiments ?? 3}
                       </td>
                       <td className="text-muted text-xs">
-                        {new Date(session.timestamp).toLocaleTimeString()} - {new Date(session.timestamp).toLocaleDateString()}
+                        {new Date(session.timestamp).toLocaleDateString()}
                       </td>
                       <td>
-                        <span className="badge-sent">🌟 COMPLETADO</span>
+                        <span className="badge-sent">
+                          {session.allPassed ? '✅ Aprobado' : '📋 Terminado'}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -110,7 +100,7 @@ function App() {
       )}
 
       <footer className="app-main-footer">
-        <p>© 2026 - El Laboratorio del Bosque. Hecho con amor para niñas y niños de 5 a 6 años. 🧪</p>
+        <p>© 2026 - El Laboratorio de Arte. Hecho con amor para niñas y niños de 5 a 6 años. 🧪</p>
         <p className="footer-small">🧪 ¡Divertidos experimentos de colores en el laboratorio del bosque mágico!</p>
       </footer>
     </div>

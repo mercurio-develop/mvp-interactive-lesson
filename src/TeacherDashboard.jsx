@@ -73,14 +73,12 @@ function TeacherDashboard({ onClose }) {
     if (results.length === 0) return;
 
     // Header definition
-    const headers = ['Cientifico(a)', 'Rango Cientifico', 'Ciencia (Score)', 'Intentos', 'Exitos', 'Tiempo (segundos)', 'Fecha y Hora'];
+    const headers = ['Nombre', 'Correctas', 'Total', 'Aprobado', 'Fecha y Hora'];
     const rows = results.map(r => [
       r.studentName,
-      r.labRank,
-      r.score,
-      r.attempts,
-      r.successes,
-      r.timeSeconds,
+      r.successes ?? 0,
+      r.totalExperiments ?? 3,
+      r.allPassed ? 'Si' : 'No',
       new Date(r.timestamp).toLocaleString()
     ]);
 
@@ -100,14 +98,11 @@ function TeacherDashboard({ onClose }) {
 
   // Calculate Metrics
   const totalStudents = results.length;
-  const avgScore = totalStudents
-    ? Math.round(results.reduce((acc, r) => acc + r.score, 0) / totalStudents)
+  const avgCorrect = totalStudents
+    ? (results.reduce((acc, r) => acc + (r.successes ?? 0), 0) / totalStudents).toFixed(1)
     : 0;
-  const avgTime = totalStudents
-    ? Math.round(results.reduce((acc, r) => acc + r.timeSeconds, 0) / totalStudents)
-    : 0;
-  const avgAttempts = totalStudents
-    ? (results.reduce((acc, r) => acc + r.attempts, 0) / totalStudents).toFixed(1)
+  const passRate = totalStudents
+    ? Math.round((results.filter((r) => r.allPassed || (r.successes ?? 0) === (r.totalExperiments ?? 3)).length / totalStudents) * 100)
     : 0;
 
   // Search & Filter
@@ -116,10 +111,8 @@ function TeacherDashboard({ onClose }) {
     .sort((a, b) => {
       if (sortBy === 'date_desc') return new Date(b.timestamp) - new Date(a.timestamp);
       if (sortBy === 'date_asc') return new Date(a.timestamp) - new Date(b.timestamp);
-      if (sortBy === 'score_desc') return b.score - a.score;
-      if (sortBy === 'score_asc') return a.score - b.score;
-      if (sortBy === 'time_asc') return a.timeSeconds - b.timeSeconds;
-      if (sortBy === 'time_desc') return b.timeSeconds - a.timeSeconds;
+      if (sortBy === 'score_desc') return (b.successes ?? 0) - (a.successes ?? 0);
+      if (sortBy === 'score_asc') return (a.successes ?? 0) - (b.successes ?? 0);
       if (sortBy === 'name_asc') return a.studentName.localeCompare(b.studentName);
       return 0;
     });
@@ -196,24 +189,17 @@ function TeacherDashboard({ onClose }) {
           <div className="stat-card">
             <span className="stat-icon">🎒</span>
             <div className="stat-value">{totalStudents}</div>
-            <div className="stat-label">Científicos Evaluados</div>
+            <div className="stat-label">Pruebas realizadas</div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">✨</span>
-            <div className="stat-value">{avgScore} CIENCIA</div>
-            <div className="stat-label">Ciencia Promedio</div>
+            <span className="stat-icon">✅</span>
+            <div className="stat-value">{avgCorrect} / 3</div>
+            <div className="stat-label">Promedio correctas</div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">⏳</span>
-            <div className="stat-value">
-              {Math.floor(avgTime / 60)}m {avgTime % 60}s
-            </div>
-            <div className="stat-label">Tiempo Promedio</div>
-          </div>
-          <div className="stat-card">
-            <span className="stat-icon">🧪</span>
-            <div className="stat-value">{avgAttempts}</div>
-            <div className="stat-label">Intentos Promedio</div>
+            <span className="stat-icon">🏆</span>
+            <div className="stat-value">{passRate}%</div>
+            <div className="stat-label">Aprobados (3/3)</div>
           </div>
         </section>
 
@@ -237,10 +223,8 @@ function TeacherDashboard({ onClose }) {
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
               <option value="date_desc">Fecha (Recientes primero)</option>
               <option value="date_asc">Fecha (Antiguos primero)</option>
-              <option value="score_desc">Ciencia (Mayor a menor)</option>
-              <option value="score_asc">Ciencia (Menor a mayor)</option>
-              <option value="time_asc">Tiempo (Más rápidos)</option>
-              <option value="time_desc">Tiempo (Más lentos)</option>
+              <option value="score_desc">Correctas (Mayor a menor)</option>
+              <option value="score_asc">Correctas (Menor a mayor)</option>
               <option value="name_asc">Nombre (A - Z)</option>
             </select>
           </div>
@@ -289,37 +273,27 @@ function TeacherDashboard({ onClose }) {
               <table className="dashboard-table">
                 <thead>
                   <tr>
-                    <th>Científico(a)</th>
-                    <th>Rango</th>
-                    <th>Ciencia Obtenida ✨</th>
-                    <th>Intentos</th>
-                    <th>Mezclas Correctas</th>
-                    <th>Tiempo en Lab</th>
-                    <th>Fecha y Hora</th>
+                    <th>Nombre</th>
+                    <th>Correctas</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredResults.map((r) => (
                     <tr key={r.id} className="dashboard-table-row">
                       <td className="student-name-cell">{r.studentName}</td>
-                      <td>
-                        <span className={`rank-badge ${r.labRank}`}>
-                          {r.labRank === 'Apprentice'
-                            ? 'Ayudante de Lab 🌱'
-                            : r.labRank === 'Researcher'
-                            ? 'Científico(a) del Bosque 🌸'
-                            : 'Gran Sabio del Lab 🌳'}
-                        </span>
+                      <td className="score-cell font-bold">
+                        {r.successes ?? 0} / {r.totalExperiments ?? 3}
                       </td>
-                      <td className="score-cell font-bold">{r.score} CIENCIA</td>
-                      <td className="attempts-cell">{r.attempts}</td>
-                      <td>{r.successes} / 5</td>
-                      <td className="time-cell">
-                        {Math.floor(r.timeSeconds / 60)}m {r.timeSeconds % 60}s
+                      <td>
+                        {(r.allPassed || (r.successes ?? 0) === (r.totalExperiments ?? 3))
+                          ? '✅ Aprobado'
+                          : '📋 Terminado'}
                       </td>
                       <td className="timestamp-cell">
-                        {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{' '}
-                        - {new Date(r.timestamp).toLocaleDateString()}
+                        {new Date(r.timestamp).toLocaleDateString()}{' '}
+                        {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </td>
                     </tr>
                   ))}

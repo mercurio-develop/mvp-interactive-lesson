@@ -393,14 +393,14 @@ body {
 
 .hud-metric .label {
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #854d0e;
 }
 
 .hud-metric .value {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--text-dark);
 }
@@ -441,6 +441,14 @@ body {
   padding: 8px 16px;
   border-radius: 12px;
   border: 2px solid #e6dfd3;
+}
+
+.stats-box.simple-stats {
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #78350f;
 }
 
 .stat-node {
@@ -531,6 +539,100 @@ body {
   margin: 0 0 12px 0;
   border-left: 4px solid #d97706;
   padding-left: 8px;
+}
+
+/* Active Experiment Selector */
+.active-experiment-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.experiment-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fdfbf7;
+  border: 3px solid #e6dfd3;
+  border-radius: 16px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  font-family: var(--font-sans);
+  width: 100%;
+}
+
+.experiment-select-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #854d0e;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(120, 53, 15, 0.08);
+}
+
+.experiment-select-btn.selected {
+  border-color: #854d0e;
+  background: #fefcf6;
+  box-shadow: 0 4px 12px rgba(120, 53, 15, 0.1);
+}
+
+.experiment-select-btn.solved {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.experiment-select-btn .emoji {
+  font-size: 24px;
+}
+
+.experiment-select-btn .details {
+  display: flex;
+  flex-direction: column;
+}
+
+.experiment-select-btn .name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #78350f;
+}
+
+.experiment-select-btn.solved .name {
+  color: #64748b;
+  text-decoration: line-through;
+}
+
+.experiment-select-btn .status {
+  font-size: 10px;
+  font-weight: 700;
+  color: #a16207;
+  margin-top: 2px;
+}
+
+.experiment-select-btn.selected .status {
+  color: #16a34a;
+}
+
+.experiment-select-btn.solved .status {
+  color: #475569;
+}
+
+.experiment-select-btn.failed {
+  background: #fef2f2;
+  border-color: #fecaca;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.experiment-select-btn.failed .name {
+  color: #991b1b;
+  text-decoration: line-through;
+}
+
+.experiment-select-btn.failed .status {
+  color: #dc2626;
 }
 
 .recipe-list {
@@ -626,13 +728,15 @@ body {
 
 /* Canvas Wrapper Area */
 .canvas-wrapper {
-  background: linear-gradient(135deg, #eaf2e8 0%, #dbeada 100%); /* Cozy Ghibli botanical sage-green */
+  background: linear-gradient(135deg, #6c8c6c 0%, #4a664a 100%); /* Rich Ghibli forest sage green */
   border-radius: 24px;
   border: 4px solid #b5cfc0; /* matching soft sage border */
   box-shadow: inset 0 0 40px rgba(22, 101, 52, 0.05), 0 10px 25px rgba(120, 53, 15, 0.06);
   position: relative;
   overflow: hidden;
-  height: 580px;
+  width: 100%;
+  aspect-ratio: 1000 / 580;
+  height: auto;
 }
 
 .phaser-canvas-container {
@@ -695,6 +799,38 @@ body {
   margin: 0 0 25px 0;
   font-weight: 600;
   font-style: italic;
+}
+
+.result-list {
+  list-style: none;
+  margin: 0 0 24px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fcfaf2;
+  border: 2px solid #e6dfd3;
+  font-weight: 700;
+  font-size: 14px;
+  color: #78350f;
+}
+
+.result-item.passed {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.result-item.failed {
+  border-color: #fecaca;
+  background: #fef2f2;
 }
 
 .diploma-details {
@@ -841,9 +977,37 @@ body {
     grid-template-columns: 1fr;
     text-align: center;
     justify-content: center;
+    padding: 10px 14px;
+    gap: 12px;
   }
   .hud-actions {
     justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .terminal-body {
+    padding: 20px 16px;
+  }
+  .stats-box {
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  .stat-separator {
+    display: none;
+  }
+  .diploma-card {
+    padding: 20px 16px;
+    border-width: 4px;
+  }
+  .diploma-title {
+    font-size: 20px;
+  }
+  .victory-overlay {
+    overflow-y: auto;
+    align-items: flex-start;
   }
 }
 
